@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: massage_postgres_dev
+    environment:
+      POSTGRES_DB: massage
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: devpassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_dev_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d massage"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pg_dev_data:

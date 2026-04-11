@@ -1,0 +1,179 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum PaymentProvider {
+  FREEDOMPAY
+  YOOKASSA
+}
+
+enum SyncStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+// ─── Users (admin only) ───────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         Role     @default(ADMIN)
+  createdAt    DateTime @default(now())
+}
+
+// ─── Products & Tariffs ───────────────────────────────────────────────────────
+
+model Product {
+  id               String      @id @default(cuid())
+  slug             String      @unique
+  title            String
+  shortDescription String
+  longDescription  String      @db.Text
+  thumbnailUrl     String?
+  durationLabel    String?
+  order            Int         @default(0)
+  isPublished      Boolean     @default(false)
+  priceKgs         Int?
+  priceUsd         Int?
+  getcourseGroupName String?
+  tariffs          Tariff[]
+  orderItems       OrderItem[]
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  @@index([isPublished, order])
+}
+
+model Tariff {
+  id                 String      @id @default(cuid())
+  productId          String
+  product            Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name               String
+  tagline            String?
+  priceKgs           Int
+  priceUsd           Int
+  durationLabel      String
+  includes           String[]
+  getcourseGroupName String
+  order              Int         @default(0)
+  orderItems         OrderItem[]
+
+  @@index([productId, order])
+}
+
+// ─── CMS Pages ────────────────────────────────────────────────────────────────
+
+model Page {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  title     String
+  content   String   @db.Text
+  seoTitle  String?
+  seoDesc   String?
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Site Settings (singleton) ────────────────────────────────────────────────
+
+model SiteSettings {
+  id              Int      @id @default(1)
+  instagramUrl    String?
+  whatsappUrl     String?
+  telegramUrl     String?
+  heroImageUrl    String?
+  metaPixelId     String?
+  yandexMetricaId String?
+  gaId            String?
+  updatedAt       DateTime @updatedAt
+}
+
+// ─── Orders ───────────────────────────────────────────────────────────────────
+
+model Order {
+  id              String          @id @default(cuid())
+  customerEmail   String
+  customerName    String
+  customerPhone   String?
+  amount          Int
+  currency        String
+  provider        PaymentProvider
+  providerOrderId String?
+  status          OrderStatus     @default(PENDING)
+  items           OrderItem[]
+  syncStatus      SyncStatus      @default(PENDING)
+  syncAttempts    Int             @default(0)
+  syncError       String?
+  paidAt          DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([status, createdAt])
+  @@index([providerOrderId])
+}
+
+model OrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  tariffId  String?
+  tariff    Tariff?  @relation(fields: [tariffId], references: [id])
+  title     String
+  priceKgs  Int
+  priceUsd  Int
+
+  @@index([orderId])
+}
+
+// ─── Gift Certificates ────────────────────────────────────────────────────────
+
+model GiftCertificate {
+  id              String    @id @default(cuid())
+  code            String    @unique
+  orderId         String?
+  productId       String?
+  amountKgs       Int
+  recipientEmail  String?
+  redeemedAt      DateTime?
+  redeemedOrderId String?
+  createdAt       DateTime  @default(now())
+}
+
+// ─── Integration Logs ─────────────────────────────────────────────────────────
+
+model IntegrationLog {
+  id           String   @id @default(cuid())
+  source       String
+  event        String
+  orderId      String?
+  requestBody  String?  @db.Text
+  responseBody String?  @db.Text
+  status       String
+  error        String?
+  createdAt    DateTime @default(now())
+
+  @@index([orderId, createdAt])
+  @@index([source, createdAt])
+}
