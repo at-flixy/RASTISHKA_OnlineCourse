@@ -1,9 +1,11 @@
 import { MetadataRoute } from "next";
 import { db } from "@/lib/db";
+import { connection } from "next/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  await connection();
   const baseUrl = process.env.SITE_URL ?? "https://masalova.com";
 
   const products = await db.product.findMany({

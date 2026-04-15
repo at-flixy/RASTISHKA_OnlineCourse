@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { Metadata } from "next";
+import { connection } from "next/server";
 import Link from "next/link";
 import { Gift, Heart, Sparkles, CheckCircle } from "lucide-react";
 
@@ -12,6 +13,7 @@ export const metadata: Metadata = {
 };
 
 export default async function GiftCertificatePage() {
+  await connection();
   const page = await db.page.findUnique({ where: { slug: "gift-certificate" } });
 
   const products = await db.product.findMany({

@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { Metadata } from "next";
+import { connection } from "next/server";
 import Image from "next/image";
 import Link from "next/link";
 import { Award, Heart, BookOpen, Users } from "lucide-react";
@@ -7,6 +8,7 @@ import { Award, Heart, BookOpen, Users } from "lucide-react";
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
+  await connection();
   const page = await db.page.findUnique({ where: { slug: "about" } });
   return {
     title: page?.seoTitle ?? "Обо мне | Светлана Масалова",
@@ -17,6 +19,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function AboutPage() {
+  await connection();
   const [page, settings] = await Promise.all([
     db.page.findUnique({ where: { slug: "about" } }),
     db.siteSettings.findUnique({ where: { id: 1 } }),
