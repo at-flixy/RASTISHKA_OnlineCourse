@@ -4,6 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { Award, Heart, BookOpen, Users } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata(): Promise<Metadata> {
   const page = await db.page.findUnique({ where: { slug: "about" } });
   return {

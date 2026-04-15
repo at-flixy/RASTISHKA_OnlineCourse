@@ -5,6 +5,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { MessageCircle, Send, AtSign, Gift, Award, Heart, Users } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await db.siteSettings.findUnique({ where: { id: 1 } });
   const page = await db.page.findUnique({ where: { slug: "home" } });

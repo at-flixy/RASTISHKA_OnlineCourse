@@ -3,6 +3,8 @@ import { Metadata } from "next";
 import Link from "next/link";
 import { Gift, Heart, Sparkles, CheckCircle } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Подарочный сертификат | Светлана Масалова",
   description:

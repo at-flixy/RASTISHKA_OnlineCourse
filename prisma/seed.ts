@@ -1,9 +1,10 @@
 import { PrismaClient } from "@/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { getDatabaseUrl } from "@/lib/database-url";
 import bcrypt from "bcryptjs";
 import "dotenv/config";
 
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! });
+const adapter = new PrismaPg({ connectionString: getDatabaseUrl() });
 const db = new PrismaClient({ adapter });
 
 async function main() {
@@ -11,14 +12,25 @@ async function main() {
 
   // ─── Admin User ────────────────────────────────────────────────────────────
   const email = process.env.ADMIN_EMAIL ?? "admin@masalova.com";
-  const password = process.env.ADMIN_PASSWORD ?? "admin123";
-  const passwordHash = await bcrypt.hash(password, 12);
+  const existingAdmin = await db.user.findUnique({ where: { email } });
+  const password = process.env.ADMIN_PASSWORD;
 
-  await db.user.upsert({
-    where: { email },
-    update: { passwordHash },
-    create: { email, name: "Светлана Масалова", passwordHash, role: "ADMIN" },
-  });
+  if (!existingAdmin) {
+    const initialPassword = password ?? "admin123";
+    const passwordHash = await bcrypt.hash(initialPassword, 12);
+
+    await db.user.create({
+      data: { email, name: "Светлана Масалова", passwordHash, role: "ADMIN" },
+    });
+  } else if (password) {
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    await db.user.update({
+      where: { email },
+      data: { passwordHash },
+    });
+  }
+
   console.log(`✅ Admin user: ${email}`);
 
   // ─── Products ──────────────────────────────────────────────────────────────
