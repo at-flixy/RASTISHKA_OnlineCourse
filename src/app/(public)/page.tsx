@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { CourseCard } from "@/components/marketing/CourseCard";
 import { Metadata } from "next";
+import { connection } from "next/server";
 import Image from "next/image";
 import Link from "next/link";
 import { MessageCircle, Send, AtSign, Gift, Award, Heart, Users } from "lucide-react";
@@ -8,6 +9,7 @@ import { MessageCircle, Send, AtSign, Gift, Award, Heart, Users } from "lucide-r
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
+  await connection();
   const settings = await db.siteSettings.findUnique({ where: { id: 1 } });
   const page = await db.page.findUnique({ where: { slug: "home" } });
 
@@ -25,6 +27,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
+  await connection();
   const [products, settings] = await Promise.all([
     db.product.findMany({
       where: { isPublished: true },

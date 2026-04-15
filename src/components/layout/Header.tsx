@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
+import { hasDatabaseUrl } from "@/lib/database-url";
 import { Phone, MessageCircle, Send, AtSign } from "lucide-react";
 
 export async function Header() {
-  const settings = await db.siteSettings.findUnique({ where: { id: 1 } });
+  const settings = hasDatabaseUrl()
+    ? await db.siteSettings.findUnique({ where: { id: 1 } })
+    : null;
 
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-border shadow-sm">

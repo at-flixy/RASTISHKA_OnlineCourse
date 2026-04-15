@@ -8,6 +8,10 @@ function ensureSslMode(databaseUrl: string) {
   return url.toString();
 }
 
+export function hasDatabaseUrl() {
+  return Boolean(process.env.DATABASE_URL);
+}
+
 export function getDatabaseUrl() {
   const databaseUrl = process.env.DATABASE_URL;
 

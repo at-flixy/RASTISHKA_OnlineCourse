@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { TariffCard } from "@/components/marketing/TariffCard";
 import { Metadata } from "next";
 import Link from "next/link";
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  await connection();
   const { slug } = await params;
   const product = await db.product.findUnique({
     where: { slug, isPublished: true },
@@ -32,6 +34,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function CoursePage({ params }: Props) {
+  await connection();
   const { slug } = await params;
 
   const product = await db.product.findUnique({

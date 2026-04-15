@@ -1,7 +1,12 @@
 import Script from "next/script";
 import { db } from "@/lib/db";
+import { hasDatabaseUrl } from "@/lib/database-url";
 
 export async function Analytics() {
+  if (!hasDatabaseUrl()) {
+    return null;
+  }
+
   const settings = await db.siteSettings.findUnique({ where: { id: 1 } });
 
   return (
