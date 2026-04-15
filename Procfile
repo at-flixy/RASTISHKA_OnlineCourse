@@ -1,2 +1,2 @@
-release: npm run db:migrate:deploy
+release: npm run db:setup
 web: npm start

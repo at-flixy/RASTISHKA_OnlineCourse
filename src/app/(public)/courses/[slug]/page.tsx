@@ -6,6 +6,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { Clock, ArrowLeft, CheckCircle } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 interface Props {
   params: Promise<{ slug: string }>;
 }
@@ -27,14 +29,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       images: product.thumbnailUrl ? [{ url: product.thumbnailUrl }] : [],
     },
   };
-}
-
-export async function generateStaticParams() {
-  const products = await db.product.findMany({
-    where: { isPublished: true },
-    select: { slug: true },
-  });
-  return products.map((p) => ({ slug: p.slug }));
 }
 
 export default async function CoursePage({ params }: Props) {
