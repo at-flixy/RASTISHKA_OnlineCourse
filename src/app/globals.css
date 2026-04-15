@@ -64,7 +64,7 @@
   --color-popover-foreground: var(--popover-foreground);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
-  --font-sans: var(--font-inter);
+  --font-sans: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
 }
 
 /* ─── Base ───────────────────────────────────────────────────────────────────── */

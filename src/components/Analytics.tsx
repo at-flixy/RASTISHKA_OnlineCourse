@@ -1,4 +1,5 @@
 import Script from "next/script";
+import { connection } from "next/server";
 import { db } from "@/lib/db";
 import { hasDatabaseUrl } from "@/lib/database-url";
 
@@ -7,6 +8,7 @@ export async function Analytics() {
     return null;
   }
 
+  await connection();
   const settings = await db.siteSettings.findUnique({ where: { id: 1 } });
 
   return (

@@ -1,9 +1,14 @@
 import Link from "next/link";
+import { connection } from "next/server";
 import { db } from "@/lib/db";
 import { hasDatabaseUrl } from "@/lib/database-url";
 import { MessageCircle, Send, AtSign } from "lucide-react";
 
 export async function Footer() {
+  if (hasDatabaseUrl()) {
+    await connection();
+  }
+
   const settings = hasDatabaseUrl()
     ? await db.siteSettings.findUnique({ where: { id: 1 } })
     : null;
