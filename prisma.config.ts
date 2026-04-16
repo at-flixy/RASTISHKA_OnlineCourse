@@ -3,12 +3,29 @@
 import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
+function getPrismaDatabaseUrl() {
+  const directUrl = process.env.DATABASE_URL ?? process.env.POSTGRES_URL;
+
+  if (directUrl) {
+    return directUrl;
+  }
+
+  for (const [key, value] of Object.entries(process.env)) {
+    if (key.startsWith("HEROKU_POSTGRESQL_") && key.endsWith("_URL") && value) {
+      process.env.DATABASE_URL = value;
+      return value;
+    }
+  }
+
+  return undefined;
+}
+
 export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
+    url: getPrismaDatabaseUrl(),
   },
 });
