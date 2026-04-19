@@ -20,6 +20,6 @@ ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 
 COPY start.sh ./start.sh
-RUN chmod +x start.sh
+RUN sed -i 's/\r$//' start.sh && chmod +x start.sh
 
 CMD ["./start.sh"]
