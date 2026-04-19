@@ -105,6 +105,7 @@ model SiteSettings {
   metaPixelId     String?
   yandexMetricaId String?
   gaId            String?
+  landingContent  Json?
   updatedAt       DateTime @updatedAt
 }
 
