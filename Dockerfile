@@ -19,4 +19,7 @@ EXPOSE 3000
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 
-CMD ["sh", "-c", "npm run db:migrate:deploy && node .next/standalone/server.js"]
+COPY start.sh ./start.sh
+RUN chmod +x start.sh
+
+CMD ["./start.sh"]
