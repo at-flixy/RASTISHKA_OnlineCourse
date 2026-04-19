@@ -1,5 +1,5 @@
 [deploy]
-startCommand = "npm run db:migrate:deploy && node .next/standalone/server.js"
+startCommand = "npm run db:migrate:deploy && echo '=== STARTING NODE ===' && node --version && ls -la .next/standalone/ && node .next/standalone/server.js"
 healthcheckPath = "/"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
