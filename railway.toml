@@ -1,9 +1,6 @@
-[build]
-builder = "nixpacks"
-
 [deploy]
-startCommand = "npm run db:migrate:deploy && npm start"
+startCommand = "npm run db:migrate:deploy && node .next/standalone/server.js"
 healthcheckPath = "/"
-healthcheckTimeout = 100
+healthcheckTimeout = 300
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10
