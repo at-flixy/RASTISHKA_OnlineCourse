@@ -11,7 +11,12 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
+# Copy static assets into standalone output
+RUN cp -r public .next/standalone/public && \
+    cp -r .next/static .next/standalone/.next/static
+
 EXPOSE 3000
 ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
 
-CMD ["sh", "-c", "npm run db:migrate:deploy && npm start"]
+CMD ["sh", "-c", "npm run db:migrate:deploy && node .next/standalone/server.js"]
