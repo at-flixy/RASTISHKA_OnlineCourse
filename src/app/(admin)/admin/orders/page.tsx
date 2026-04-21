@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
@@ -11,33 +12,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import Link from "next/link";
-
-const statusLabels: Record<string, string> = {
-  PENDING: "Ожидание",
-  PAID: "Оплачен",
-  FAILED: "Ошибка",
-  REFUNDED: "Возврат",
-};
-
-const statusVariants: Record<string, "default" | "success" | "destructive" | "secondary" | "warning" | "outline"> = {
-  PENDING: "warning",
-  PAID: "success",
-  FAILED: "destructive",
-  REFUNDED: "secondary",
-};
-
-const syncVariants: Record<string, "default" | "success" | "destructive" | "secondary" | "warning" | "outline"> = {
-  PENDING: "secondary",
-  SUCCESS: "success",
-  FAILED: "destructive",
-};
-
-const syncLabels: Record<string, string> = {
-  PENDING: "Ожидает",
-  SUCCESS: "Синхр.",
-  FAILED: "Ошибка",
-};
+import {
+  formatMoney,
+  orderStatusLabels,
+  orderStatusVariants,
+  purchaseTypeLabels,
+  syncStatusLabels,
+  syncStatusVariants,
+} from "@/lib/order-meta";
 
 export default async function OrdersPage() {
   const session = await auth();
@@ -57,9 +39,7 @@ export default async function OrdersPage() {
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Заказы</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Последние {orders.length} заказов
-        </p>
+        <p className="text-muted-foreground text-sm mt-1">Последние {orders.length} заказов</p>
       </div>
 
       <Card>
@@ -86,10 +66,7 @@ export default async function OrdersPage() {
                 {orders.map((order) => (
                   <TableRow key={order.id}>
                     <TableCell>
-                      <Link
-                        href={`/admin/orders/${order.id}`}
-                        className="block hover:underline"
-                      >
+                      <Link href={`/admin/orders/${order.id}`} className="block hover:underline">
                         <div className="font-medium text-sm">{order.customerName}</div>
                         <div className="text-xs text-muted-foreground">{order.customerEmail}</div>
                       </Link>
@@ -102,20 +79,19 @@ export default async function OrdersPage() {
                         </span>
                       )}
                     </TableCell>
-                    <TableCell className="text-sm font-medium">
-                      {(order.amount / 100).toLocaleString("ru-RU")} {order.currency}
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {order.provider}
+                    <TableCell className="text-sm font-medium">{formatMoney(order.amount, order.currency)}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground space-y-1">
+                      <div>{order.provider}</div>
+                      <div>{purchaseTypeLabels[order.purchaseType] ?? order.purchaseType}</div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={statusVariants[order.status] ?? "secondary"}>
-                        {statusLabels[order.status] ?? order.status}
+                      <Badge variant={orderStatusVariants[order.status] ?? "secondary"}>
+                        {orderStatusLabels[order.status] ?? order.status}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={syncVariants[order.syncStatus] ?? "secondary"}>
-                        {syncLabels[order.syncStatus] ?? order.syncStatus}
+                      <Badge variant={syncStatusVariants[order.syncStatus] ?? "secondary"}>
+                        {syncStatusLabels[order.syncStatus] ?? order.syncStatus}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">

@@ -83,7 +83,7 @@ export default async function GiftCertificatePage() {
                 icon: Heart,
                 step: "2",
                 title: "Оплатите",
-                desc: "Оплатите удобным способом — FreedomPay (KGS) или YooKassa (RUB)",
+                desc: "Оплатите картой на защищённой странице Stripe Checkout",
               },
               {
                 icon: Sparkles,

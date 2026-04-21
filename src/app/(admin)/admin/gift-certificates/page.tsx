@@ -11,6 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { formatMoney } from "@/lib/order-meta";
 
 export default async function GiftCertificatesPage() {
   const session = await auth();
@@ -53,9 +54,7 @@ export default async function GiftCertificatesPage() {
                 {certificates.map((cert) => (
                   <TableRow key={cert.id}>
                     <TableCell className="font-mono text-sm">{cert.code}</TableCell>
-                    <TableCell className="text-sm">
-                      {(cert.amountKgs / 100).toLocaleString("ru-RU")} с
-                    </TableCell>
+                    <TableCell className="text-sm">{formatMoney(cert.amount, cert.currency)}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {cert.recipientEmail ?? "—"}
                     </TableCell>

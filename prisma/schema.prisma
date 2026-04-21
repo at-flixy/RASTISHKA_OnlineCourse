@@ -22,7 +22,13 @@ enum OrderStatus {
 
 enum PaymentProvider {
   FREEDOMPAY
+  STRIPE
   YOOKASSA
+}
+
+enum PurchaseType {
+  COURSE
+  GIFT_CERTIFICATE
 }
 
 enum SyncStatus {
@@ -116,16 +122,23 @@ model Order {
   customerEmail   String
   customerName    String
   customerPhone   String?
+  giftRecipientEmail String?
   amount          Int
   currency        String
+  paidCurrency    String?
   provider        PaymentProvider
+  purchaseType    PurchaseType    @default(COURSE)
   providerOrderId String?
+  stripeCheckoutSessionId String? @unique
+  stripePaymentIntentId String?   @unique
   status          OrderStatus     @default(PENDING)
   items           OrderItem[]
   syncStatus      SyncStatus      @default(PENDING)
   syncAttempts    Int             @default(0)
   syncError       String?
   paidAt          DateTime?
+  customerEmailSentAt DateTime?
+  recipientEmailSentAt DateTime?
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
@@ -153,9 +166,12 @@ model OrderItem {
 model GiftCertificate {
   id              String    @id @default(cuid())
   code            String    @unique
-  orderId         String?
+  orderId         String?   @unique
   productId       String?
-  amountKgs       Int
+  tariffId        String?
+  amount          Int
+  currency        String
+  amountKgs       Int?
   recipientEmail  String?
   redeemedAt      DateTime?
   redeemedOrderId String?

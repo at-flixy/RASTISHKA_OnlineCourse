@@ -1,11 +1,12 @@
 {
   "name": "massage-masalova",
-  "description": "Next.js application configured for Heroku deployment",
+  "description": "Next.js application with Stripe Checkout, Prisma, and PostgreSQL",
   "keywords": [
     "nextjs",
     "heroku",
     "prisma",
-    "postgresql"
+    "postgresql",
+    "stripe"
   ],
   "website": "https://your-domain.com",
   "repository": "https://github.com/your-org/your-repo",
@@ -20,18 +21,19 @@
       "value": "true"
     },
     "SITE_URL": {
-      "description": "Public app URL, for example https://your-app.herokuapp.com"
+      "description": "Public app URL, for example https://your-app.example.com"
     },
     "NEXT_PUBLIC_APP_URL": {
       "description": "Public app URL exposed to the client"
     },
-    "ADMIN_EMAIL": {
-      "description": "Initial admin email used for seed/manual setup",
-      "required": false
+    "STRIPE_SECRET_KEY": {
+      "description": "Stripe secret key for Checkout Sessions and webhook handling"
     },
-    "ADMIN_PASSWORD": {
-      "description": "Initial admin password used for seed/manual setup",
-      "required": false
+    "STRIPE_PUBLISHABLE_KEY": {
+      "description": "Stripe publishable key kept for client-side integrations and dashboard parity"
+    },
+    "STRIPE_WEBHOOK_SECRET": {
+      "description": "Signing secret for /api/stripe/webhook"
     },
     "GETCOURSE_ACCOUNT": {
       "required": false
@@ -39,30 +41,18 @@
     "GETCOURSE_API_KEY": {
       "required": false
     },
-    "FREEDOMPAY_MERCHANT_ID": {
-      "required": false
-    },
-    "FREEDOMPAY_SECRET_KEY": {
-      "required": false
-    },
-    "FREEDOMPAY_TEST_MODE": {
-      "value": "true",
-      "required": false
-    },
-    "YOOKASSA_SHOP_ID": {
-      "required": false
-    },
-    "YOOKASSA_SECRET_KEY": {
-      "required": false
-    },
-    "YOOKASSA_TEST_MODE": {
-      "value": "true",
-      "required": false
-    },
     "RESEND_API_KEY": {
       "required": false
     },
     "MAIL_FROM": {
+      "required": false
+    },
+    "ADMIN_EMAIL": {
+      "description": "Initial admin email used for seed/manual setup",
+      "required": false
+    },
+    "ADMIN_PASSWORD": {
+      "description": "Initial admin password used for seed/manual setup",
       "required": false
     }
   },

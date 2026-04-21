@@ -1,14 +1,14 @@
 # RASTISHKA Online Course
 
-Next.js 16 + Prisma + PostgreSQL project for deployment on Heroku.
+Next.js 16 + Prisma + PostgreSQL project with Stripe Checkout payments and Railway deployment.
 
-## Local Development
+## Local development
 
 Requirements:
 
-- Node.js 20
+- Node.js 24
 - PostgreSQL
-- `DATABASE_URL` in `.env`
+- `.env` with `DATABASE_URL`
 
 Commands:
 
@@ -20,59 +20,58 @@ npm run db:seed
 npm run dev
 ```
 
-## Heroku Deployment
+## Railway deployment
 
-The app is configured for Heroku via:
+Production deployment is configured for Railway via:
 
-- [Procfile](/Users/amirhanordobaev/DataspellProjects/RASTISHKA_OnlineCourse/Procfile:1)
-- [app.json](/Users/amirhanordobaev/DataspellProjects/RASTISHKA_OnlineCourse/app.json:1)
-- Prisma release phase with automatic seed on first deploy
+- [railway.toml](/C:/Users/Lenovo/Desktop/RASPROD/RASTISHKA_OnlineCourse/railway.toml:1)
+- [Dockerfile](/C:/Users/Lenovo/Desktop/RASPROD/RASTISHKA_OnlineCourse/Dockerfile:1)
+- [start.sh](/C:/Users/Lenovo/Desktop/RASPROD/RASTISHKA_OnlineCourse/start.sh:1)
 
-### Required config vars
+The container build runs `npm run build`.
+At boot, `start.sh` applies Prisma migrations with `npm run db:migrate:deploy` and then starts the standalone Next.js server.
+
+## Required environment variables
+
+Core:
 
 - `AUTH_SECRET`
+- `AUTH_TRUST_HOST=true`
 - `SITE_URL`
+- `NEXT_PUBLIC_APP_URL`
+- `STRIPE_SECRET_KEY`
+- `STRIPE_PUBLISHABLE_KEY`
+- `STRIPE_WEBHOOK_SECRET`
 
-Recommended:
+Operational:
 
+- `GETCOURSE_ACCOUNT`
+- `GETCOURSE_API_KEY`
+- `RESEND_API_KEY`
+- `MAIL_FROM`
 - `ADMIN_EMAIL`
 - `ADMIN_PASSWORD`
-- `NEXT_PUBLIC_APP_URL`
 
-Heroku Postgres provides `DATABASE_URL` automatically.
+Railway Postgres provides `DATABASE_URL` automatically when the `Postgres` service is attached.
 
-### First deploy behavior
+## Stripe setup
 
-During the `release` phase Heroku runs:
+This project uses hosted [Stripe Checkout](https://docs.stripe.com/payments/checkout) for one-time card payments.
 
-```bash
-npm run db:setup
-```
+Create a webhook endpoint:
 
-That command:
+- URL: `https://<your-domain>/api/stripe/webhook`
+- Events:
+  - `checkout.session.completed`
+  - `checkout.session.expired`
+  - `payment_intent.payment_failed`
 
-1. Applies Prisma migrations
-2. Seeds the database
-3. Creates the admin user if it does not exist yet
+Put the signing secret into `STRIPE_WEBHOOK_SECRET`.
 
-If `ADMIN_PASSWORD` is set, an existing admin password is updated to that value on deploy.
-If `ADMIN_PASSWORD` is not set, an existing admin password is left unchanged.
+## Go-live checklist
 
-### Create the app
-
-```bash
-heroku create
-heroku addons:create heroku-postgresql:essential-0
-heroku config:set AUTH_SECRET="$(openssl rand -base64 32)"
-heroku config:set SITE_URL="https://<your-app>.herokuapp.com"
-heroku config:set NEXT_PUBLIC_APP_URL="https://<your-app>.herokuapp.com"
-heroku config:set ADMIN_EMAIL="admin@example.com"
-heroku config:set ADMIN_PASSWORD="<strong-password>"
-git push heroku main
-```
-
-### Notes
-
-- Public Prisma-backed pages are forced to runtime rendering so `next build` does not require a live database.
-- Database connections are normalized with `sslmode=require`, which matches Heroku Postgres expectations.
-- The app starts with `npm start` and listens on the Heroku-provided `PORT`.
+- Confirm the Stripe account is activated in a supported country and can accept live card payments.
+- Configure business details, support email, statement descriptor, and Checkout branding in Stripe Dashboard.
+- Verify `SITE_URL` and `NEXT_PUBLIC_APP_URL` point to the production domain.
+- Test successful payment, failed payment, cancellation, and 3D Secure flows in Stripe.
+- Verify post-payment emails and GetCourse access sync from Railway production logs.
