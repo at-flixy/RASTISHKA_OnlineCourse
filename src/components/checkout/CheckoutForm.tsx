@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, type FormEvent } from "react";
+import Image from "next/image";
 import { CreditCard, Gift, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -371,6 +372,31 @@ export function CheckoutForm({
               <span className="font-medium">К оплате</span>
               <span className="font-semibold text-primary">{formatMoney(amount ?? 0, currency)}</span>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Принимаем карты</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { src: "/payments/visa.svg", alt: "Visa" },
+                { src: "/payments/mastercard.svg", alt: "Mastercard" },
+                { src: "/payments/elcart.png", alt: "Элкарт" },
+              ].map(({ src, alt }) => (
+                <div
+                  key={alt}
+                  className="h-8 w-14 border border-border rounded flex items-center justify-center overflow-hidden bg-white"
+                >
+                  <Image src={src} alt={alt} width={56} height={32} className="object-contain" />
+                </div>
+              ))}
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground">
+              Оплата защищена. Данные карты не хранятся на нашем сайте.
+            </p>
           </CardContent>
         </Card>
 
