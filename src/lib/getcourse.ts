@@ -15,7 +15,23 @@ type GetCourseOrder = {
   }>;
 };
 
-function getGetCourseConfig() {
+export function getGetCourseApiHost(value: string) {
+  const normalizedValue = value.trim();
+
+  if (!normalizedValue) {
+    throw new Error("GETCOURSE_ACCOUNT is empty");
+  }
+
+  try {
+    const url = new URL(normalizedValue);
+    return url.hostname;
+  } catch {
+    const hostname = normalizedValue.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+    return hostname.includes(".") ? hostname : `${hostname}.getcourse.ru`;
+  }
+}
+
+export function getGetCourseConfig() {
   const account = process.env.GETCOURSE_ACCOUNT;
   const apiKey = process.env.GETCOURSE_API_KEY;
 
@@ -23,7 +39,7 @@ function getGetCourseConfig() {
     throw new Error("GETCOURSE_ACCOUNT and GETCOURSE_API_KEY are required");
   }
 
-  return { account, apiKey };
+  return { apiHost: getGetCourseApiHost(account), apiKey };
 }
 
 function getGroupNames(order: GetCourseOrder) {
@@ -37,7 +53,7 @@ function getGroupNames(order: GetCourseOrder) {
 }
 
 export async function syncCourseAccessToGetCourse(order: GetCourseOrder) {
-  const { account, apiKey } = getGetCourseConfig();
+  const { apiHost, apiKey } = getGetCourseConfig();
   const groupNames = getGroupNames(order);
 
   if (groupNames.length === 0) {
@@ -65,7 +81,7 @@ export async function syncCourseAccessToGetCourse(order: GetCourseOrder) {
     params,
   });
 
-  const response = await fetch(`https://${account}.getcourse.ru/pl/api/users`, {
+  const response = await fetch(`https://${apiHost}/pl/api/users`, {
     method: "POST",
     body,
     headers: { "Content-Type": "application/x-www-form-urlencoded" },

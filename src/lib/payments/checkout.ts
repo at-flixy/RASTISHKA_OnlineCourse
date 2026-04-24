@@ -25,11 +25,13 @@ export async function createPendingCheckoutOrder(input: {
   customerEmail: string;
   customerPhone: string;
   giftRecipientEmail?: string | null;
+  userId?: string | null;
 }) {
   const { priceKgs, priceUsd } = getCheckoutCatalogPrices(input.purchase);
 
   return db.order.create({
     data: {
+      userId: input.userId ?? null,
       customerEmail: input.customerEmail,
       customerName: input.customerName,
       customerPhone: input.customerPhone,

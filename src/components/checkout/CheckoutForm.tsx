@@ -2,7 +2,7 @@
 
 import { useState, useTransition, type FormEvent } from "react";
 import Image from "next/image";
-import { CreditCard, Gift, ShieldCheck } from "lucide-react";
+import { AlertTriangle, CreditCard, Gift, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,9 +33,14 @@ type CheckoutProduct = {
 
 type CheckoutFormProps = {
   availableProviders: CheckoutProvider[];
+  currentUser?: {
+    email: string;
+    name: string;
+  } | null;
   initialCurrency: CheckoutCurrency;
   initialProvider: CheckoutProvider;
   initialTariffId: string | null;
+  paymentUnavailableReason?: string | null;
   product: CheckoutProduct;
   purchaseType: PurchaseType;
 };
@@ -87,10 +92,12 @@ function getAvailableCurrencies(priceKgs: number | null, priceUsd: number | null
 
 export function CheckoutForm({
   availableProviders,
+  currentUser,
   product,
   initialTariffId,
   initialCurrency,
   initialProvider,
+  paymentUnavailableReason,
   purchaseType,
 }: CheckoutFormProps) {
   const [selectedTariffId, setSelectedTariffId] = useState(initialTariffId);
@@ -98,8 +105,8 @@ export function CheckoutForm({
   const [provider, setProvider] = useState<CheckoutProvider>(
     availableProviders.includes(initialProvider) ? initialProvider : (availableProviders[0] ?? initialProvider)
   );
-  const [customerName, setCustomerName] = useState("");
-  const [customerEmail, setCustomerEmail] = useState("");
+  const [customerName, setCustomerName] = useState(currentUser?.name ?? "");
+  const [customerEmail, setCustomerEmail] = useState(currentUser?.email ?? "");
   const [customerPhone, setCustomerPhone] = useState("");
   const [giftRecipientEmail, setGiftRecipientEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -127,6 +134,11 @@ export function CheckoutForm({
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
+
+    if (paymentUnavailableReason) {
+      setError(paymentUnavailableReason);
+      return;
+    }
 
     startTransition(() => {
       void (async () => {
@@ -289,8 +301,15 @@ export function CheckoutForm({
                   value={customerEmail}
                   onChange={(event) => setCustomerEmail(event.target.value)}
                   placeholder="you@example.com"
+                  readOnly={Boolean(currentUser?.email)}
+                  className={currentUser?.email ? "bg-muted" : undefined}
                   required
                 />
+                {currentUser?.email && (
+                  <p className="text-xs text-muted-foreground">
+                    Заказ будет привязан к вашему кабинету.
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="customerPhone">Телефон</Label>
@@ -319,17 +338,34 @@ export function CheckoutForm({
               )}
             </div>
 
+            {paymentUnavailableReason && (
+              <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <div>
+                  <div className="font-medium">Платежи временно недоступны</div>
+                  <div className="mt-1">{paymentUnavailableReason}</div>
+                </div>
+              </div>
+            )}
+
             {error && (
               <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
                 {error}
               </div>
             )}
 
-            <Button type="submit" size="lg" className="w-full" disabled={isPending || amount == null}>
+            <Button
+              type="submit"
+              size="lg"
+              className="w-full"
+              disabled={isPending || amount == null || Boolean(paymentUnavailableReason)}
+            >
               <CreditCard className="h-4 w-4" />
-              {isPending
-                ? currentProvider.pendingLabel
-                : `Перейти к оплате - ${formatMoney(amount ?? 0, currency)}`}
+              {paymentUnavailableReason
+                ? "Платежи временно недоступны"
+                : isPending
+                  ? currentProvider.pendingLabel
+                  : `Перейти к оплате - ${formatMoney(amount ?? 0, currency)}`}
             </Button>
           </form>
         </CardContent>

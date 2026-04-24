@@ -22,6 +22,22 @@ export function isPaymentProviderConfigured(provider: CheckoutProvider) {
   return paymentProviderEnvRequirements[provider].every(hasRequiredEnv);
 }
 
+export function getMissingPaymentProviderEnv(provider: CheckoutProvider) {
+  return paymentProviderEnvRequirements[provider].filter((name) => !hasRequiredEnv(name));
+}
+
+export function getCheckoutProviderSetupIssue(provider: CheckoutProvider) {
+  const missingEnv = getMissingPaymentProviderEnv(provider);
+
+  if (missingEnv.length === 0) {
+    return null;
+  }
+
+  return `Платежи через ${paymentProviderLabels[provider]} временно недоступны: не настроены ${missingEnv.join(
+    ", "
+  )}.`;
+}
+
 export function isCheckoutProviderAvailable(provider: CheckoutProvider) {
   return enabledCheckoutProviders.includes(provider) && isPaymentProviderConfigured(provider);
 }

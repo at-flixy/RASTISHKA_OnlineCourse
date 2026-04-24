@@ -1,12 +1,15 @@
 import { randomBytes } from "node:crypto";
+import { createPasswordSetupToken, ensureCustomerAccount, normalizeEmail } from "@/lib/account";
 import { db } from "@/lib/db";
 import { logIntegrationEvent } from "@/lib/integration-log";
 import {
+  sendAccountSetupEmail,
   sendCoursePaymentConfirmationEmail,
   sendGiftCertificatePurchaserEmail,
   sendGiftCertificateRecipientEmail,
 } from "@/lib/email";
 import { syncCourseAccessToGetCourse } from "@/lib/getcourse";
+import { getSiteUrl } from "@/lib/site-url";
 
 async function getOrderForFulfillment(orderId: string) {
   return db.order.findUnique({
@@ -50,6 +53,67 @@ async function generateGiftCertificateCode() {
   }
 
   throw new Error("Failed to generate a unique gift certificate code");
+}
+
+async function ensureCustomerAccountForPaidOrder(orderId: string) {
+  const order = await getOrderForFulfillment(orderId);
+
+  if (!order) {
+    throw new Error("Order not found");
+  }
+
+  const normalizedEmail = normalizeEmail(order.customerEmail);
+  const user = await ensureCustomerAccount({
+    email: normalizedEmail,
+    name: order.customerName,
+  });
+
+  if (order.userId !== user.id || order.customerEmail !== normalizedEmail) {
+    await db.order.update({
+      where: { id: order.id },
+      data: {
+        customerEmail: normalizedEmail,
+        userId: user.id,
+      },
+    });
+  }
+
+  if (user.passwordHash || order.accountSetupEmailSentAt) {
+    return;
+  }
+
+  try {
+    const { token } = await createPasswordSetupToken(user.id);
+    const setupUrl = `${getSiteUrl()}/account/setup?token=${encodeURIComponent(token)}`;
+    const result = await sendAccountSetupEmail({
+      customerEmail: user.email,
+      customerName: user.name,
+      setupUrl,
+    });
+
+    await db.order.update({
+      where: { id: order.id },
+      data: {
+        accountSetupEmailSentAt: new Date(),
+      },
+    });
+
+    await logIntegrationEvent({
+      source: "resend",
+      event: "account-setup",
+      orderId: order.id,
+      status: "SUCCESS",
+      responseBody: result,
+    });
+  } catch (error) {
+    await logIntegrationEvent({
+      source: "resend",
+      event: "account-setup",
+      orderId: order.id,
+      status: "FAILED",
+      error: getErrorMessage(error),
+    });
+  }
 }
 
 async function ensureGiftCertificate(orderId: string) {
@@ -173,8 +237,10 @@ async function sendCourseEmailIfNeeded(orderId: string) {
 
   try {
     const result = await sendCoursePaymentConfirmationEmail({
+      accountUrl: `${getSiteUrl()}/account`,
       customerName: order.customerName,
       customerEmail: order.customerEmail,
+      getCourseAccessReady: order.syncStatus === "SUCCESS",
       items: order.items.map((item) => ({ title: item.title })),
     });
 
@@ -315,6 +381,8 @@ export async function fulfillPaidOrder(orderId: string) {
     throw new Error("Order not found");
   }
 
+  await ensureCustomerAccountForPaidOrder(order.id);
+
   if (order.purchaseType === "GIFT_CERTIFICATE") {
     await ensureGiftCertificate(order.id);
     await markGiftSyncSuccess(order.id);
@@ -322,6 +390,6 @@ export async function fulfillPaidOrder(orderId: string) {
     return;
   }
 
-  await sendCourseEmailIfNeeded(order.id);
   await syncOrderToGetCourseIfNeeded(order.id);
+  await sendCourseEmailIfNeeded(order.id);
 }

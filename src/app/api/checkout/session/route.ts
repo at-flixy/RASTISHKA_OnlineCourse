@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { normalizeEmail } from "@/lib/account";
+import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { logIntegrationEvent } from "@/lib/integration-log";
 import {
@@ -177,13 +179,16 @@ export async function POST(request: Request) {
       currency: parsed.data.currency,
       purchaseType: parsed.data.purchaseType,
     });
+    const session = await auth();
+    const customerEmail = normalizeEmail(session?.user?.email ?? parsed.data.customerEmail);
     const order = await createPendingCheckoutOrder({
       purchase,
       provider: parsed.data.provider,
       customerName: parsed.data.customerName,
-      customerEmail: parsed.data.customerEmail,
+      customerEmail,
       customerPhone: parsed.data.customerPhone,
       giftRecipientEmail: parsed.data.giftRecipientEmail ?? null,
+      userId: session?.user?.id ?? null,
     });
 
     try {
@@ -194,7 +199,7 @@ export async function POST(request: Request) {
               purchase,
             })
           : await createStripeCheckoutSession({
-              customerEmail: parsed.data.customerEmail,
+              customerEmail,
               giftRecipientEmail: parsed.data.giftRecipientEmail ?? null,
               order,
               purchase,

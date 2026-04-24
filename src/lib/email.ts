@@ -12,6 +12,8 @@ type SendEmailInput = {
 type CourseEmailOrder = {
   customerName: string;
   customerEmail: string;
+  accountUrl: string;
+  getCourseAccessReady: boolean;
   items: Array<{
     title: string;
   }>;
@@ -24,6 +26,12 @@ type GiftCertificateEmailInput = {
   title: string;
   amount: number;
   currency: string;
+};
+
+type AccountSetupEmailInput = {
+  customerName: string;
+  customerEmail: string;
+  setupUrl: string;
 };
 
 function getResendClient() {
@@ -81,7 +89,6 @@ export async function sendTransactionalEmail(input: SendEmailInput) {
 }
 
 export async function sendCoursePaymentConfirmationEmail(order: CourseEmailOrder) {
-  const siteUrl = getSiteUrl();
   const itemsHtml = order.items
     .map((item) => `<li>${escapeHtml(item.title)}</li>`)
     .join("");
@@ -92,11 +99,33 @@ export async function sendCoursePaymentConfirmationEmail(order: CourseEmailOrder
     html: `
       <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">
         <h1 style="font-size:22px;margin-bottom:16px">Спасибо за покупку, ${escapeHtml(order.customerName)}!</h1>
-        <p>Мы получили вашу оплату и начали выдачу доступа в GetCourse.</p>
+        <p>${
+          order.getCourseAccessReady
+            ? "Мы получили вашу оплату и оформили доступ к курсу."
+            : "Мы получили вашу оплату. Доступ к курсу оформляется, если он не появится автоматически, ответьте на это письмо."
+        }</p>
+        <p>Логин для входа в личный кабинет: <strong>${escapeHtml(order.customerEmail)}</strong></p>
+        <p><a href="${escapeHtml(order.accountUrl)}" style="color:#2563eb">Открыть личный кабинет</a></p>
         <p>Состав заказа:</p>
         <ul>${itemsHtml}</ul>
         <p>Если доступ не появится автоматически, свяжитесь с нами, ответив на это письмо.</p>
-        <p><a href="${siteUrl}" style="color:#2563eb">Перейти на сайт</a></p>
+      </div>
+    `,
+  });
+}
+
+export async function sendAccountSetupEmail(input: AccountSetupEmailInput) {
+  return sendTransactionalEmail({
+    to: input.customerEmail,
+    subject: "Доступ к личному кабинету",
+    html: `
+      <div style="font-family:Arial,sans-serif;line-height:1.6;color:#111827">
+        <h1 style="font-size:22px;margin-bottom:16px">Личный кабинет готов</h1>
+        <p>${escapeHtml(input.customerName)}, для вашего email создан личный кабинет.</p>
+        <p>Логин: <strong>${escapeHtml(input.customerEmail)}</strong></p>
+        <p>Задайте пароль и откройте список оплаченных курсов:</p>
+        <p><a href="${escapeHtml(input.setupUrl)}" style="color:#2563eb">Создать пароль</a></p>
+        <p>Если вы не покупали курс, просто проигнорируйте это письмо.</p>
       </div>
     `,
   });

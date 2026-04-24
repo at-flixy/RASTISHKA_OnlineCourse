@@ -166,6 +166,11 @@ export default async function CheckoutSuccessPage({ searchParams }: SuccessPageP
           <Button asChild>
             <Link href="/">На главную</Link>
           </Button>
+          {order?.status === "PAID" && (
+            <Button asChild variant="outline">
+              <Link href="/account">Личный кабинет</Link>
+            </Button>
+          )}
           {primaryItem && (
             <Button asChild variant="outline">
               <Link href={`/courses/${primaryItem.product.slug}`}>Вернуться к курсу</Link>
