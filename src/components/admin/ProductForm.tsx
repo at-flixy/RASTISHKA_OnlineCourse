@@ -161,8 +161,18 @@ export function ProductForm({ product, isNew = false }: ProductFormProps) {
       }
 
       if (!res.ok) {
-        const data = await res.json();
-        setError(data.error?.formErrors?.[0] ?? "Ошибка сохранения");
+        const data = await res.json().catch(() => null);
+        const fieldErrors = data?.error?.fieldErrors
+          ? Object.entries(data.error.fieldErrors)
+              .map(([field, msgs]) => `${field}: ${(msgs as string[])[0]}`)
+              .join("; ")
+          : null;
+        setError(
+          fieldErrors ||
+            data?.error?.formErrors?.[0] ||
+            (typeof data?.error === "string" ? data.error : null) ||
+            `Ошибка ${res.status}`
+        );
         return;
       }
 

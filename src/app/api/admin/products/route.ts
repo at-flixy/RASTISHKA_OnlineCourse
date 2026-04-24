@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { requireAdminSession } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { z } from "zod";
 
@@ -8,7 +8,7 @@ const productSchema = z.object({
   title: z.string().min(1),
   shortDescription: z.string().min(1),
   longDescription: z.string().default(""),
-  thumbnailUrl: z.string().url().optional().or(z.literal("")),
+  thumbnailUrl: z.string().optional().or(z.literal("")),
   durationLabel: z.string().optional().or(z.literal("")),
   priceKgs: z.number().int().nonnegative().optional().nullable(),
   priceUsd: z.number().int().nonnegative().optional().nullable(),
@@ -16,14 +16,8 @@ const productSchema = z.object({
   isPublished: z.boolean().default(false),
 });
 
-async function requireAdmin() {
-  const session = await auth();
-  if (!session?.user) return null;
-  return session;
-}
-
 export async function GET() {
-  const session = await requireAdmin();
+  const session = await requireAdminSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const products = await db.product.findMany({
@@ -38,7 +32,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const session = await requireAdmin();
+  const session = await requireAdminSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json();
