@@ -47,16 +47,29 @@ export function ImageUpload({
           method: "POST",
           body: formData,
         });
-        const data = await res.json();
 
         if (!res.ok) {
-          setError(data.error ?? "Ошибка загрузки");
+          let message = `Ошибка ${res.status}`;
+          try {
+            const data = await res.json();
+            if (data?.error) message = data.error;
+          } catch {
+            if (res.status === 413) {
+              message = "Файл слишком большой для сервера";
+            } else if (res.status === 504 || res.status === 502) {
+              message = "Сервер не отвечает. Попробуйте файл поменьше";
+            }
+          }
+          setError(message);
           return;
         }
 
+        const data = await res.json();
         onChange(data.url);
-      } catch {
-        setError("Ошибка соединения");
+      } catch (err) {
+        const message =
+          err instanceof Error && err.message ? err.message : "Ошибка соединения";
+        setError(message);
       } finally {
         setIsUploading(false);
       }

@@ -8,8 +8,7 @@ export const legalEntity = {
   regAuthority:
     "Управление Государственной налоговой службы по Свердловскому району города Бишкек",
   activity: "85.10.0 — Дошкольное образование",
-  address:
-    "Кыргызская Республика, г. Бишкек, Свердловский район, ул. Кольбаева, д. 18, кв. 7",
+  address: "Кыргызская Республика, г. Бишкек, проспект Абсамата Масалиева, 67Б",
   publicPhone: "+996 509 237 134",
   legalPhone: "+996 705 773 565",
   brand: "Светлана Масалова",
@@ -18,5 +17,4 @@ export const legalEntity = {
 
 export const refundPolicy = {
   deadlineDays: 14,
-  progressThresholdPercent: 20,
 } as const;

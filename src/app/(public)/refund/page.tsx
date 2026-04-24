@@ -54,8 +54,7 @@ export default async function RefundPage() {
                     <strong>{refundPolicy.deadlineDays} календарных дней</strong>
                   </li>
                   <li>
-                    Заказчик просмотрел не более{" "}
-                    <strong>{refundPolicy.progressThresholdPercent}% материалов курса</strong>
+                    Курс <strong>не начат</strong> — не просмотрен ни один урок
                   </li>
                 </ul>
                 <p>
@@ -69,7 +68,7 @@ export default async function RefundPage() {
                 <p>Возврат не производится, если:</p>
                 <ul>
                   <li>С момента оплаты прошло более {refundPolicy.deadlineDays} дней</li>
-                  <li>Просмотрено более {refundPolicy.progressThresholdPercent}% материалов курса</li>
+                  <li>Заказчик приступил к изучению курса — просмотрен хотя бы один урок</li>
                   <li>Курс был приобретён по акционной цене (со скидкой более 50%)</li>
                   <li>Доступ к курсу был передан третьим лицам</li>
                 </ul>

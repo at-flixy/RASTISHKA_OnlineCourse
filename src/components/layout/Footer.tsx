@@ -76,7 +76,6 @@ export async function Footer() {
               <Link href="/offer" className="hover:text-white transition-colors">Публичная оферта</Link>
               <Link href="/privacy" className="hover:text-white transition-colors">Политика конфиденциальности</Link>
               <Link href="/refund" className="hover:text-white transition-colors">Правила возврата</Link>
-              <Link href="/requisites" className="hover:text-white transition-colors">Реквизиты</Link>
             </nav>
           </div>
 
