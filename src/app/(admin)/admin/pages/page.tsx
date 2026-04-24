@@ -10,6 +10,9 @@ const PAGE_SLUGS = [
   { slug: "home", label: "Главная страница", description: "Хиро-блок, контент лендинга" },
   { slug: "about", label: "Обо мне", description: "Страница /about" },
   { slug: "gift-certificate", label: "Подарочный сертификат", description: "Страница /gift-certificate" },
+  { slug: "privacy", label: "Политика конфиденциальности", description: "Страница /privacy" },
+  { slug: "offer", label: "Публичная оферта", description: "Страница /offer" },
+  { slug: "refund", label: "Правила возврата", description: "Страница /refund" },
 ];
 
 export default async function PagesAdminPage() {

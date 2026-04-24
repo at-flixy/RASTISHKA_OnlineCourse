@@ -3,7 +3,7 @@ import { Metadata } from "next";
 import { connection } from "next/server";
 import Image from "next/image";
 import Link from "next/link";
-import { Award, Heart, BookOpen, Users } from "lucide-react";
+import { Award, Heart, BookOpen, Users, GraduationCap, FileText } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -151,6 +151,70 @@ export default async function AboutPage() {
           </div>
         </section>
       )}
+
+      {/* Credentials */}
+      <section className="py-12 sm:py-16 bg-muted/20">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6">
+          <div className="flex items-center gap-3 mb-8">
+            <GraduationCap className="h-6 w-6 text-primary" />
+            <h2 className="text-2xl font-bold text-foreground">Образование и сертификаты</h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {[
+              {
+                year: "2019",
+                type: "Диплом бакалавра",
+                title: "«Здоровье человека»",
+                issuer:
+                  "Мелитопольский институт экологии и социальных технологий / Открытый международный университет развития человека «Украина»",
+                page: 1,
+              },
+              {
+                year: "2016",
+                type: "Сертификат",
+                title: "«Массажист-реабилитолог»",
+                issuer:
+                  "Мелитопольский институт экологии и социальных технологий, 72 часа",
+                page: 2,
+              },
+              {
+                year: "2025",
+                type: "Сертификат",
+                title: "«Остеопатический подход к новорождённым»",
+                issuer:
+                  "Академия Асель Жагапаровны — Osteo Correction, Бишкек",
+                page: 3,
+              },
+            ].map(({ year, type, title, issuer, page }) => (
+              <div
+                key={title}
+                className="bg-white rounded-2xl border border-border p-5 shadow-sm flex flex-col gap-3"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-primary bg-primary/10 px-2.5 py-1 rounded-full">
+                    <Award className="h-3 w-3" />
+                    {type}
+                  </span>
+                  <span className="text-xs text-muted-foreground font-medium">{year}</span>
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground text-sm leading-snug">{title}</p>
+                  <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{issuer}</p>
+                </div>
+                <a
+                  href={`/documents/masalova-credentials.pdf#page=${page}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-auto inline-flex items-center gap-1.5 text-xs text-primary hover:underline font-medium"
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  Смотреть документ
+                </a>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* CTA */}
       <section className="py-12 bg-muted/30">
