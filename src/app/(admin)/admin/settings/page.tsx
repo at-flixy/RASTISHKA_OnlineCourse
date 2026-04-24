@@ -1,11 +1,9 @@
-import { auth } from "@/lib/auth";
-import { redirect } from "next/navigation";
+import { requireAdmin } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { SettingsForm } from "@/components/admin/SettingsForm";
 
 export default async function SettingsPage() {
-  const session = await auth();
-  if (!session?.user) redirect("/admin/login");
+  await requireAdmin();
 
   const settings = await db.siteSettings.findUnique({ where: { id: 1 } });
 

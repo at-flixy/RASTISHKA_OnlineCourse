@@ -1,5 +1,4 @@
-import { auth } from "@/lib/auth";
-import { redirect } from "next/navigation";
+import { requireAdmin } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,8 +7,7 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 
 export default async function ProductsPage() {
-  const session = await auth();
-  if (!session?.user) redirect("/admin/login");
+  await requireAdmin();
 
   const products = await db.product.findMany({
     orderBy: { order: "asc" },

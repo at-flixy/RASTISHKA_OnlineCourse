@@ -1,5 +1,5 @@
-import { auth } from "@/lib/auth";
-import { redirect, notFound } from "next/navigation";
+import { requireAdmin } from "@/lib/authz";
+import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { ProductForm } from "@/components/admin/ProductForm";
 import { Button } from "@/components/ui/button";
@@ -11,8 +11,7 @@ export default async function EditProductPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const session = await auth();
-  if (!session?.user) redirect("/admin/login");
+  await requireAdmin();
 
   const { id } = await params;
   const product = await db.product.findUnique({

@@ -1,14 +1,12 @@
-import { auth } from "@/lib/auth";
-import { redirect } from "next/navigation";
+import { requireAdmin } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ShoppingCart, Users, BookOpen, TrendingUp } from "lucide-react";
+import { ShoppingCart, BookOpen, TrendingUp } from "lucide-react";
 
 export default async function AdminDashboardPage() {
-  const session = await auth();
-  if (!session?.user) redirect("/admin/login");
+  const session = await requireAdmin();
 
   const [totalOrders, paidOrders, totalProducts, recentOrders] = await Promise.all([
     db.order.count(),

@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth, signIn } from "@/lib/auth";
+import { normalizeEmail } from "@/lib/account";
+import { db } from "@/lib/db";
 import { AuthError } from "next-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,15 +14,26 @@ export default async function LoginPage({
   searchParams: Promise<{ callbackUrl?: string; error?: string }>;
 }) {
   const session = await auth();
-  if (session?.user) redirect("/admin");
+  if (session?.user?.role === "ADMIN") redirect("/admin");
+  if (session?.user) redirect("/account");
 
   const { callbackUrl, error } = await searchParams;
 
   async function login(formData: FormData) {
     "use server";
     try {
+      const email = normalizeEmail(String(formData.get("email") ?? ""));
+      const user = await db.user.findUnique({
+        where: { email },
+        select: { role: true },
+      });
+
+      if (user?.role !== "ADMIN") {
+        redirect(`/admin/login?error=invalid`);
+      }
+
       await signIn("credentials", {
-        email: formData.get("email"),
+        email,
         password: formData.get("password"),
         redirectTo: callbackUrl ?? "/admin",
       });

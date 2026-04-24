@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { requireAdminSession } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { z } from "zod";
 
@@ -29,17 +29,11 @@ const updateProductSchema = z.object({
   tariffs: z.array(tariffSchema).optional(),
 });
 
-async function requireAdmin() {
-  const session = await auth();
-  if (!session?.user) return null;
-  return session;
-}
-
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await requireAdmin();
+  const session = await requireAdminSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
@@ -56,7 +50,7 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await requireAdmin();
+  const session = await requireAdminSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
@@ -69,7 +63,7 @@ export async function PATCH(
   const { tariffs, ...productData } = parsed.data;
 
   // Update product
-  const product = await db.product.update({
+  await db.product.update({
     where: { id },
     data: productData,
   });
@@ -114,7 +108,7 @@ export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const session = await requireAdmin();
+  const session = await requireAdminSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;

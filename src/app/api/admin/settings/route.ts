@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { requireAdminSession } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { z } from "zod";
 
@@ -14,7 +14,7 @@ const settingsSchema = z.object({
 });
 
 export async function GET() {
-  const session = await auth();
+  const session = await requireAdminSession();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const settings = await db.siteSettings.findUnique({ where: { id: 1 } });
@@ -22,7 +22,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const session = await auth();
+  const session = await requireAdminSession();
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await request.json();

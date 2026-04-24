@@ -1,5 +1,4 @@
-import { auth } from "@/lib/auth";
-import { redirect } from "next/navigation";
+import { requireAdmin } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,8 +13,7 @@ import {
 import { formatMoney } from "@/lib/order-meta";
 
 export default async function GiftCertificatesPage() {
-  const session = await auth();
-  if (!session?.user) redirect("/admin/login");
+  await requireAdmin();
 
   const certificates = await db.giftCertificate.findMany({
     orderBy: { createdAt: "desc" },

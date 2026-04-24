@@ -1,5 +1,5 @@
-import { redirect, notFound } from "next/navigation";
-import { auth } from "@/lib/auth";
+import { notFound } from "next/navigation";
+import { requireAdmin } from "@/lib/authz";
 import { db } from "@/lib/db";
 import {
   formatMoney,
@@ -18,11 +18,7 @@ interface OrderDetailsPageProps {
 }
 
 export default async function OrderDetailsPage({ params }: OrderDetailsPageProps) {
-  const session = await auth();
-
-  if (!session?.user) {
-    redirect("/admin/login");
-  }
+  await requireAdmin();
 
   const { id } = await params;
   const order = await db.order.findUnique({

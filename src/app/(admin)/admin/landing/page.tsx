@@ -1,12 +1,10 @@
-import { auth } from "@/lib/auth";
-import { redirect } from "next/navigation";
+import { requireAdmin } from "@/lib/authz";
 import { db } from "@/lib/db";
 import { LandingContentForm } from "@/components/admin/LandingContentForm";
 import { resolveLandingContent } from "@/lib/landing-content";
 
 export default async function LandingAdminPage() {
-  const session = await auth();
-  if (!session?.user) redirect("/admin/login");
+  await requireAdmin();
 
   const settings = await db.siteSettings.findUnique({ where: { id: 1 } });
   const landingContent = settings?.landingContent

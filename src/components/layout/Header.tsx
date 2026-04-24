@@ -1,17 +1,20 @@
 import Link from "next/link";
 import { connection } from "next/server";
+import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { hasDatabaseUrl } from "@/lib/database-url";
-import { Phone, MessageCircle, Send, AtSign } from "lucide-react";
+import { MessageCircle, Send, AtSign, User } from "lucide-react";
 
 export async function Header() {
   if (hasDatabaseUrl()) {
     await connection();
   }
 
-  const settings = hasDatabaseUrl()
-    ? await db.siteSettings.findUnique({ where: { id: 1 } })
-    : null;
+  const [settings, session] = await Promise.all([
+    hasDatabaseUrl() ? db.siteSettings.findUnique({ where: { id: 1 } }) : null,
+    auth(),
+  ]);
+  const accountHref = session?.user?.role === "ADMIN" ? "/admin" : "/account";
 
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-sm border-b border-border shadow-sm">
@@ -37,6 +40,13 @@ export async function Header() {
 
         {/* Social contacts */}
         <div className="flex items-center gap-2">
+          <Link
+            href={session?.user ? accountHref : "/account/login"}
+            className="hidden items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground/80 transition-colors hover:border-primary/40 hover:text-primary sm:inline-flex"
+          >
+            <User className="h-4 w-4" />
+            {session?.user ? "Кабинет" : "Войти"}
+          </Link>
           {settings?.whatsappUrl && (
             <a
               href={settings.whatsappUrl}

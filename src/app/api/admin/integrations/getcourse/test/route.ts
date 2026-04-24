@@ -1,41 +1,28 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { requireAdminSession } from "@/lib/authz";
+import { getGetCourseConfig } from "@/lib/getcourse";
 
 export async function POST() {
-  const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const session = await requireAdminSession();
 
-  const account = process.env.GETCOURSE_ACCOUNT;
-  const apiKey = process.env.GETCOURSE_API_KEY;
-
-  if (!account || !apiKey) {
-    return NextResponse.json(
-      { success: false, error: "GETCOURSE_ACCOUNT или GETCOURSE_API_KEY не настроен в .env" },
-      { status: 400 }
-    );
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
-    const params = Buffer.from(
-      JSON.stringify({
-        user: {
-          email: "test-connection@example.com",
-          first_name: "Test",
-        },
-        system: { refresh_if_exists: 0, return_user_id: "Y" },
-      })
-    ).toString("base64");
-
+    const { apiHost, apiKey } = getGetCourseConfig();
     const body = new URLSearchParams({
-      action: "check",
+      action: "get",
       key: apiKey,
-      params,
     });
 
-    const res = await fetch(`https://${account}.getcourse.ru/pl/api/users`, {
+    const res = await fetch(`https://${apiHost}/pl/api/account/fields`, {
       method: "POST",
       body,
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "application/json; q=1.0, */*; q=0.1",
+      },
       signal: AbortSignal.timeout(10000),
     });
 
@@ -46,22 +33,44 @@ export async function POST() {
       );
     }
 
-    const data = await res.json();
+    const data = (await res.json()) as {
+      success?: boolean;
+      info?: unknown[];
+      error?: string | boolean;
+      error_message?: string;
+    };
 
-    // GetCourse returns { success: false, error: "..." } on auth failure
-    if (data.success === false) {
+    if (data.success === false || data.error) {
       return NextResponse.json(
-        { success: false, error: data.error ?? "GetCourse вернул ошибку" },
+        {
+          success: false,
+          error:
+            (typeof data.error_message === "string" && data.error_message) ||
+            (typeof data.error === "string" && data.error) ||
+            "GetCourse вернул ошибку",
+        },
         { status: 400 }
       );
     }
 
     return NextResponse.json({
       success: true,
-      message: `Соединение с ${account}.getcourse.ru установлено`,
+      message: `Соединение с ${apiHost} установлено. Справочник полей получен: ${Array.isArray(data.info) ? data.info.length : 0}`,
     });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Неизвестная ошибка";
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Неизвестная ошибка при подключении к GetCourse";
+
+    if (message === "GETCOURSE_ACCOUNT and GETCOURSE_API_KEY are required") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "GETCOURSE_ACCOUNT или GETCOURSE_API_KEY не настроены в .env",
+        },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }

@@ -1,7 +1,5 @@
-import { auth } from "@/lib/auth";
-import { redirect } from "next/navigation";
+import { requireAdmin } from "@/lib/authz";
 import { db } from "@/lib/db";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageEditorForm } from "@/components/admin/PageEditorForm";
 import { FileText } from "lucide-react";
@@ -16,8 +14,7 @@ const PAGE_SLUGS = [
 ];
 
 export default async function PagesAdminPage() {
-  const session = await auth();
-  if (!session?.user) redirect("/admin/login");
+  await requireAdmin();
 
   const pages = await db.page.findMany({
     where: { slug: { in: PAGE_SLUGS.map((p) => p.slug) } },

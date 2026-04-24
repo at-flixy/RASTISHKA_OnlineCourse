@@ -11,6 +11,7 @@ datasource db {
 
 enum Role {
   ADMIN
+  CUSTOMER
 }
 
 enum OrderStatus {
@@ -40,12 +41,28 @@ enum SyncStatus {
 // ─── Users (admin only) ───────────────────────────────────────────────────────
 
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  name         String
-  passwordHash String
-  role         Role     @default(ADMIN)
-  createdAt    DateTime @default(now())
+  id                  String               @id @default(cuid())
+  email               String               @unique
+  name                String
+  passwordHash        String?
+  role                Role                 @default(CUSTOMER)
+  orders              Order[]
+  passwordSetupTokens PasswordSetupToken[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+}
+
+model PasswordSetupToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 // ─── Products & Tariffs ───────────────────────────────────────────────────────
@@ -119,6 +136,8 @@ model SiteSettings {
 
 model Order {
   id              String          @id @default(cuid())
+  userId          String?
+  user            User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
   customerEmail   String
   customerName    String
   customerPhone   String?
@@ -138,10 +157,12 @@ model Order {
   syncError       String?
   paidAt          DateTime?
   customerEmailSentAt DateTime?
+  accountSetupEmailSentAt DateTime?
   recipientEmailSentAt DateTime?
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
+  @@index([userId])
   @@index([status, createdAt])
   @@index([providerOrderId])
 }
