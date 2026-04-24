@@ -1,0 +1,15 @@
+.git
+.gitignore
+.next
+.idea
+.claude
+.vercel
+node_modules
+coverage
+build
+*.log
+*.tsbuildinfo
+.env
+.env.local
+.env.*.local
+!.env.example
