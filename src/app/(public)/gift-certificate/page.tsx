@@ -83,7 +83,7 @@ export default async function GiftCertificatePage() {
                 icon: Heart,
                 step: "2",
                 title: "Оплатите",
-                desc: "Оплатите картой на защищённой странице Stripe Checkout",
+                desc: "Оплатите картой на защищённой странице Freedom Pay",
               },
               {
                 icon: Sparkles,

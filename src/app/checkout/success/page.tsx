@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { connection } from "next/server";
+import { PendingOrderRefresh } from "@/components/checkout/PendingOrderRefresh";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PendingOrderRefresh } from "@/components/checkout/PendingOrderRefresh";
+import { db } from "@/lib/db";
 import {
   formatMoney,
   orderStatusLabels,
@@ -12,6 +13,7 @@ import {
   syncStatusLabels,
   syncStatusVariants,
 } from "@/lib/order-meta";
+import { reconcileFreedomPayOrderStatus } from "@/lib/payments/freedompay";
 
 export const dynamic = "force-dynamic";
 
@@ -21,40 +23,51 @@ interface SuccessPageProps {
   }>;
 }
 
+async function getOrder(orderId: string) {
+  return db.order.findUnique({
+    where: { id: orderId },
+    include: {
+      items: {
+        include: {
+          product: {
+            select: {
+              slug: true,
+              title: true,
+            },
+          },
+          tariff: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
+    },
+  });
+}
+
+function getPendingMessage() {
+  return "Платёж уже вернул вас на сайт, но итоговый статус ещё обновляется. Обычно это занимает несколько секунд.";
+}
+
 export default async function CheckoutSuccessPage({ searchParams }: SuccessPageProps) {
   await connection();
 
   const params = await searchParams;
   const orderId = params.order;
-  const order = orderId
-    ? await (await import("@/lib/db")).db.order.findUnique({
-        where: { id: orderId },
-        include: {
-          items: {
-            include: {
-              product: {
-                select: {
-                  slug: true,
-                  title: true,
-                },
-              },
-              tariff: {
-                select: {
-                  id: true,
-                  name: true,
-                },
-              },
-            },
-          },
-        },
-      })
-    : null;
+  let order = orderId ? await getOrder(orderId) : null;
+
+  if (order?.status === "PENDING" && order.provider === "FREEDOMPAY") {
+    await reconcileFreedomPayOrderStatus(order.id);
+    order = await getOrder(order.id);
+  }
 
   const primaryItem = order?.items[0];
 
   return (
     <div className="py-16 sm:py-20">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 space-y-6">
+      <div className="mx-auto max-w-3xl space-y-6 px-4 sm:px-6">
         <Card>
           <CardHeader>
             <div className="flex flex-wrap items-center gap-2">
@@ -73,14 +86,15 @@ export default async function CheckoutSuccessPage({ searchParams }: SuccessPageP
               {order?.status === "PAID"
                 ? "Оплата подтверждена"
                 : order?.status === "PENDING"
-                ? "Платёж обрабатывается"
-                : "Статус платежа обновляется"}
+                  ? "Платёж обрабатывается"
+                  : "Статус платежа обновляется"}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
             {!order && (
               <p className="text-muted-foreground">
-                Мы получили возврат со страницы оплаты. Если оплата уже прошла, обновите страницу через несколько секунд.
+                Мы получили возврат со страницы оплаты. Если платёж уже прошёл, обновите страницу
+                через несколько секунд.
               </p>
             )}
 
@@ -88,25 +102,29 @@ export default async function CheckoutSuccessPage({ searchParams }: SuccessPageP
               <>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="rounded-lg border border-border p-4">
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Заказ</div>
+                    <div className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">Заказ</div>
                     <div className="font-medium">{order.id}</div>
-                    <div className="text-muted-foreground mt-1">{purchaseTypeLabels[order.purchaseType]}</div>
+                    <div className="mt-1 text-muted-foreground">
+                      {purchaseTypeLabels[order.purchaseType]}
+                    </div>
                   </div>
                   <div className="rounded-lg border border-border p-4">
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">К оплате</div>
+                    <div className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">
+                      К оплате
+                    </div>
                     <div className="font-medium">{formatMoney(order.amount, order.currency)}</div>
                     {order.paidCurrency && (
-                      <div className="text-muted-foreground mt-1">Подтверждено в {order.paidCurrency}</div>
+                      <div className="mt-1 text-muted-foreground">Подтверждено в {order.paidCurrency}</div>
                     )}
                   </div>
                 </div>
 
                 {primaryItem && (
-                  <div className="rounded-lg border border-border p-4 space-y-1">
+                  <div className="space-y-1 rounded-lg border border-border p-4">
                     <div className="text-xs uppercase tracking-wide text-muted-foreground">Продукт</div>
                     <div className="font-medium">
                       {primaryItem.tariff
-                        ? `${primaryItem.product.title} — ${primaryItem.tariff.name}`
+                        ? `${primaryItem.product.title} - ${primaryItem.tariff.name}`
                         : primaryItem.product.title}
                     </div>
                   </div>
@@ -114,30 +132,29 @@ export default async function CheckoutSuccessPage({ searchParams }: SuccessPageP
 
                 {order.status === "PAID" && order.purchaseType === "COURSE" && (
                   <p className="text-muted-foreground">
-                    Письмо с подтверждением отправлено на <strong>{order.customerEmail}</strong>. Доступ к курсу
-                    синхронизируется через GetCourse.
+                    Письмо с подтверждением отправлено на <strong>{order.customerEmail}</strong>. Доступ к
+                    курсу синхронизируется через GetCourse.
                   </p>
                 )}
 
                 {order.status === "PAID" && order.purchaseType === "GIFT_CERTIFICATE" && (
                   <p className="text-muted-foreground">
-                    Сертификат выпущен. Код будет отправлен покупателю и, при указании, получателю подарка.
+                    Сертификат выпущен. Код будет отправлен покупателю и, при указании, получателю
+                    подарка.
                   </p>
                 )}
 
                 {order.status === "PENDING" && (
                   <div className="space-y-3">
-                    <p className="text-muted-foreground">
-                      Stripe уже вернул вас на сайт, но итоговый статус ещё ждёт webhook-подтверждения. Обычно это
-                      занимает несколько секунд.
-                    </p>
+                    <p className="text-muted-foreground">{getPendingMessage()}</p>
                     <PendingOrderRefresh />
                   </div>
                 )}
 
                 {order.status === "FAILED" && (
                   <p className="text-destructive">
-                    Платёж не был подтверждён. Можно вернуться к оформлению заказа и попробовать снова.
+                    Платёж не был подтверждён. Можно вернуться к оформлению заказа и попробовать
+                    снова.
                   </p>
                 )}
               </>

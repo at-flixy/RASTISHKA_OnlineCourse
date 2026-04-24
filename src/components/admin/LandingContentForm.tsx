@@ -1,80 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { CheckCircle, ChevronDown, ChevronUp, Loader2, Plus, Trash2 } from "lucide-react";
+import { ImageUpload } from "@/components/admin/ImageUpload";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, CheckCircle } from "lucide-react";
-
-const schema = z.object({
-  hero: z.object({
-    badge: z.string(),
-    titleLine1: z.string(),
-    titleHighlight: z.string(),
-    titleLine2: z.string(),
-    description: z.string(),
-    ctaButton: z.string(),
-    whatsappButton: z.string(),
-  }),
-  stats: z.array(z.object({ value: z.string(), label: z.string() })).length(4),
-  courses: z.object({ title: z.string(), subtitle: z.string() }),
-  about: z.object({
-    title: z.string(),
-    bio: z.string(),
-    linkText: z.string(),
-    cards: z.array(z.object({ title: z.string(), desc: z.string() })).length(4),
-  }),
-  gift: z.object({ title: z.string(), subtitle: z.string(), button: z.string() }),
-});
-
-type FormValues = z.infer<typeof schema>;
-
-const DEFAULTS: FormValues = {
-  hero: {
-    badge: "Детский массаж онлайн",
-    titleLine1: "Массаж, который",
-    titleHighlight: "меняет жизнь",
-    titleLine2: "ребёнка",
-    description:
-      "Онлайн-курсы для родителей и специалистов от реабилитолога с опытом 10+ лет. Работаю с детьми с РАС, ЗПРР, СДВГ. Системный подход через тело и нервную систему.",
-    ctaButton: "Смотреть курсы",
-    whatsappButton: "Написать в WhatsApp",
-  },
-  stats: [
-    { value: "10+", label: "лет опыта" },
-    { value: "500+", label: "учеников" },
-    { value: "6", label: "курсов" },
-    { value: "100%", label: "онлайн" },
-  ],
-  courses: {
-    title: "Курсы и материалы",
-    subtitle: "Системные знания по детскому массажу — от базового до углублённого",
-  },
-  about: {
-    title: "Кто ведёт курсы?",
-    bio: "Светлана Масалова — реабилитолог, специалист по детскому массажу с опытом работы более 10 лет. Бишкек, Кыргызстан.\n\nСпециализируется на работе с особенными детьми: РАС, ЗПРР, СДВГ, ДЦП. Помогает родителям понять, как через массаж влиять на состояние нервной системы ребёнка.\n\nСоздала систему онлайн-курсов, чтобы дать знания семьям, где нет доступа к специалисту рядом.",
-    linkText: "Подробнее обо мне →",
-    cards: [
-      { title: "Реабилитолог", desc: "Профессиональная подготовка и сертификаты" },
-      { title: "Педагог", desc: "Умею объяснять сложное простыми словами" },
-      { title: "10+ лет", desc: "Практического опыта с особенными детьми" },
-      { title: "500+ учеников", desc: "Из России, Казахстана, Кыргызстана" },
-    ],
-  },
-  gift: {
-    title: "Подарите знания близким",
-    subtitle: "Подарочный сертификат на любой курс — идеальный подарок для молодых родителей",
-    button: "Оформить сертификат",
-  },
-};
+import {
+  createDefaultLandingContent,
+  landingContentSchema,
+  type LandingContent,
+} from "@/lib/landing-content";
 
 interface Props {
-  initialData: FormValues | null;
+  initialData: LandingContent | null;
 }
 
 export function LandingContentForm({ initialData }: Props) {
@@ -82,25 +25,40 @@ export function LandingContentForm({ initialData }: Props) {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { register, handleSubmit, control, formState: { errors } } = useForm<FormValues>({
-    resolver: zodResolver(schema),
-    defaultValues: initialData ?? DEFAULTS,
+  const { register, handleSubmit, control, watch, setValue } = useForm<LandingContent>({
+    resolver: zodResolver(landingContentSchema),
+    defaultValues: initialData ?? createDefaultLandingContent(),
   });
 
   const { fields: statFields } = useFieldArray({ control, name: "stats" });
   const { fields: cardFields } = useFieldArray({ control, name: "about.cards" });
+  const {
+    fields: reviewFields,
+    append: appendReview,
+    move: moveReview,
+    remove: removeReview,
+  } = useFieldArray({
+    control,
+    name: "reviews.items",
+  });
 
-  const onSubmit = async (values: FormValues) => {
+  const onSubmit = async (values: LandingContent) => {
     setIsSaving(true);
     setError(null);
     setSaved(false);
+
     try {
       const res = await fetch("/api/admin/landing", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),
       });
-      if (!res.ok) { setError("Ошибка сохранения"); return; }
+
+      if (!res.ok) {
+        setError("Ошибка сохранения");
+        return;
+      }
+
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch {
@@ -110,13 +68,24 @@ export function LandingContentForm({ initialData }: Props) {
     }
   };
 
+  const addReview = () => {
+    appendReview({
+      name: "",
+      source: "",
+      description: "",
+      alt: "",
+      imageUrl: "",
+    });
+  };
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       {error && (
-        <div className="rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>
+        <div className="rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {error}
+        </div>
       )}
 
-      {/* ── Hero ── */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Хиро-блок (первый экран)</CardTitle>
@@ -127,13 +96,13 @@ export function LandingContentForm({ initialData }: Props) {
             <Input {...register("hero.badge")} placeholder="Детский массаж онлайн" />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div className="space-y-1.5">
               <Label>Заголовок — строка 1</Label>
               <Input {...register("hero.titleLine1")} placeholder="Массаж, который" />
             </div>
             <div className="space-y-1.5">
-              <Label>Заголовок — выделение (фиолетовый)</Label>
+              <Label>Заголовок — выделение</Label>
               <Input {...register("hero.titleHighlight")} placeholder="меняет жизнь" />
             </div>
             <div className="space-y-1.5">
@@ -144,10 +113,14 @@ export function LandingContentForm({ initialData }: Props) {
 
           <div className="space-y-1.5">
             <Label>Описание</Label>
-            <Textarea {...register("hero.description")} rows={3} placeholder="Описание под заголовком" />
+            <Textarea
+              {...register("hero.description")}
+              rows={3}
+              placeholder="Описание под заголовком"
+            />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label>Кнопка «Смотреть курсы»</Label>
               <Input {...register("hero.ctaButton")} placeholder="Смотреть курсы" />
@@ -160,22 +133,21 @@ export function LandingContentForm({ initialData }: Props) {
         </CardContent>
       </Card>
 
-      {/* ── Stats ── */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Блок статистики (фиолетовая полоса)</CardTitle>
+          <CardTitle className="text-base">Блок статистики</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {statFields.map((field, i) => (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {statFields.map((field, index) => (
               <div key={field.id} className="space-y-2">
                 <div className="space-y-1.5">
-                  <Label>Значение {i + 1}</Label>
-                  <Input {...register(`stats.${i}.value`)} placeholder="10+" />
+                  <Label>Значение {index + 1}</Label>
+                  <Input {...register(`stats.${index}.value`)} placeholder="10+" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>Подпись {i + 1}</Label>
-                  <Input {...register(`stats.${i}.label`)} placeholder="лет опыта" />
+                  <Label>Подпись {index + 1}</Label>
+                  <Input {...register(`stats.${index}.label`)} placeholder="лет опыта" />
                 </div>
               </div>
             ))}
@@ -183,7 +155,6 @@ export function LandingContentForm({ initialData }: Props) {
         </CardContent>
       </Card>
 
-      {/* ── Courses section ── */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Раздел курсов</CardTitle>
@@ -195,12 +166,168 @@ export function LandingContentForm({ initialData }: Props) {
           </div>
           <div className="space-y-1.5">
             <Label>Подзаголовок</Label>
-            <Input {...register("courses.subtitle")} placeholder="Системные знания по детскому массажу..." />
+            <Input
+              {...register("courses.subtitle")}
+              placeholder="Системные знания по детскому массажу..."
+            />
           </div>
         </CardContent>
       </Card>
 
-      {/* ── About ── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Блок «Отзывы и истории учеников»</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Добавляйте скриншоты переписок, фотоотчётов и короткие подписи. Порядок здесь
+            сохраняется на главной странице.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="space-y-1.5">
+            <Label>Заголовок</Label>
+            <Input
+              {...register("reviews.title")}
+              placeholder="Отзывы и истории учеников"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label>Подзаголовок</Label>
+            <Textarea
+              {...register("reviews.subtitle")}
+              rows={2}
+              placeholder="Живые фотоотчёты и переписки из соцсетей"
+            />
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-sm text-muted-foreground">
+              Отзывов в блоке: {reviewFields.length}
+            </div>
+            <Button type="button" variant="outline" size="sm" onClick={addReview}>
+              <Plus className="mr-1 h-4 w-4" />
+              Добавить отзыв
+            </Button>
+          </div>
+
+          {reviewFields.length === 0 && (
+            <div className="rounded-2xl border border-dashed border-border bg-muted/20 px-4 py-6 text-sm text-muted-foreground">
+              Пока нет ни одного отзыва. Нажмите «Добавить отзыв», загрузите скриншот и заполните подпись.
+            </div>
+          )}
+
+          <div className="space-y-4">
+            {reviewFields.map((field, index) => {
+              const name = watch(`reviews.items.${index}.name`);
+              const imageUrl = watch(`reviews.items.${index}.imageUrl`);
+
+              return (
+                <div
+                  key={field.id}
+                  className="rounded-2xl border border-border bg-muted/20 p-4"
+                >
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-foreground">
+                        {name || `Отзыв ${index + 1}`}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Скриншот переписки или фотоотчёта
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => index > 0 && moveReview(index, index - 1)}
+                        disabled={index === 0}
+                        className="h-8 w-8 p-0"
+                      >
+                        <ChevronUp className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => index < reviewFields.length - 1 && moveReview(index, index + 1)}
+                        disabled={index === reviewFields.length - 1}
+                        className="h-8 w-8 p-0"
+                      >
+                        <ChevronDown className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeReview(index)}
+                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid gap-4 lg:grid-cols-[240px_1fr]">
+                    <div className="space-y-1.5">
+                      <Label>Изображение</Label>
+                      <ImageUpload
+                        value={imageUrl ?? ""}
+                        onChange={(url) =>
+                          setValue(`reviews.items.${index}.imageUrl`, url, {
+                            shouldDirty: true,
+                          })
+                        }
+                        aspect="story"
+                        label={name || `Отзыв ${index + 1}`}
+                      />
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <Label>Имя / заголовок</Label>
+                          <Input
+                            {...register(`reviews.items.${index}.name`)}
+                            placeholder="Например, Алина М."
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label>Источник / подпись</Label>
+                          <Input
+                            {...register(`reviews.items.${index}.source`)}
+                            placeholder="WhatsApp, Instagram, Telegram"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label>Короткое описание</Label>
+                        <Textarea
+                          {...register(`reviews.items.${index}.description`)}
+                          rows={3}
+                          placeholder="Например, краткий результат или пояснение к фотоотчёту"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label>Alt для изображения</Label>
+                        <Input
+                          {...register(`reviews.items.${index}.alt`)}
+                          placeholder="Скриншот отзыва ученика"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Блок «Кто ведёт курсы?»</CardTitle>
@@ -213,8 +340,14 @@ export function LandingContentForm({ initialData }: Props) {
 
           <div className="space-y-1.5">
             <Label>Биография</Label>
-            <p className="text-xs text-muted-foreground">Разделяйте абзацы пустой строкой (Enter дважды)</p>
-            <Textarea {...register("about.bio")} rows={6} placeholder="Светлана Масалова — реабилитолог..." />
+            <p className="text-xs text-muted-foreground">
+              Разделяйте абзацы пустой строкой (Enter дважды)
+            </p>
+            <Textarea
+              {...register("about.bio")}
+              rows={6}
+              placeholder="Светлана Масалова — реабилитолог..."
+            />
           </div>
 
           <div className="space-y-1.5">
@@ -224,16 +357,22 @@ export function LandingContentForm({ initialData }: Props) {
 
           <div className="space-y-2">
             <Label>Карточки (4 штуки)</Label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {cardFields.map((field, i) => (
-                <div key={field.id} className="border rounded-lg p-3 space-y-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {cardFields.map((field, index) => (
+                <div key={field.id} className="space-y-2 rounded-lg border p-3">
                   <div className="space-y-1.5">
-                    <Label className="text-xs">Заголовок карточки {i + 1}</Label>
-                    <Input {...register(`about.cards.${i}.title`)} placeholder="Реабилитолог" />
+                    <Label className="text-xs">Заголовок карточки {index + 1}</Label>
+                    <Input
+                      {...register(`about.cards.${index}.title`)}
+                      placeholder="Реабилитолог"
+                    />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs">Описание карточки {i + 1}</Label>
-                    <Input {...register(`about.cards.${i}.desc`)} placeholder="Профессиональная подготовка" />
+                    <Label className="text-xs">Описание карточки {index + 1}</Label>
+                    <Input
+                      {...register(`about.cards.${index}.desc`)}
+                      placeholder="Профессиональная подготовка"
+                    />
                   </div>
                 </div>
               ))}
@@ -242,7 +381,6 @@ export function LandingContentForm({ initialData }: Props) {
         </CardContent>
       </Card>
 
-      {/* ── Gift CTA ── */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Блок «Подарочный сертификат»</CardTitle>
@@ -254,7 +392,10 @@ export function LandingContentForm({ initialData }: Props) {
           </div>
           <div className="space-y-1.5">
             <Label>Подзаголовок</Label>
-            <Input {...register("gift.subtitle")} placeholder="Подарочный сертификат на любой курс..." />
+            <Input
+              {...register("gift.subtitle")}
+              placeholder="Подарочный сертификат на любой курс..."
+            />
           </div>
           <div className="space-y-1.5">
             <Label>Текст кнопки</Label>
@@ -263,15 +404,15 @@ export function LandingContentForm({ initialData }: Props) {
         </CardContent>
       </Card>
 
-      <div className="flex gap-3 justify-end items-center pb-6">
+      <div className="flex items-center justify-end gap-3 pb-6">
         {saved && (
-          <span className="text-sm text-green-600 flex items-center gap-1">
+          <span className="flex items-center gap-1 text-sm text-green-600">
             <CheckCircle className="h-4 w-4" />
             Сохранено
           </span>
         )}
         <Button type="submit" disabled={isSaving}>
-          {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+          {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
           Сохранить контент
         </Button>
       </div>

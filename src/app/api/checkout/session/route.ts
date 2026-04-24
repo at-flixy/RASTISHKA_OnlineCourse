@@ -5,13 +5,139 @@ import {
   createCheckoutSessionSchema,
   resolveCheckoutPurchase,
 } from "@/lib/payments/catalog";
-import { getStripe, getStripePaymentIntentId } from "@/lib/payments/stripe";
+import { createPendingCheckoutOrder } from "@/lib/payments/checkout";
+import {
+  createFreedomPayPayment,
+  getFreedomPayErrorMessage,
+} from "@/lib/payments/freedompay";
+import {
+  getStripe,
+  getStripePaymentIntentId,
+  getStripePublishableKey,
+} from "@/lib/payments/stripe";
+import { isCheckoutProviderAvailable } from "@/lib/payments/provider-meta";
 import { getSiteUrl } from "@/lib/site-url";
 
 export const runtime = "nodejs";
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Unknown error";
+}
+
+async function createStripeCheckoutSession(input: {
+  customerEmail: string;
+  giftRecipientEmail?: string | null;
+  order: Awaited<ReturnType<typeof createPendingCheckoutOrder>>;
+  purchase: Awaited<ReturnType<typeof resolveCheckoutPurchase>>;
+  purchaseType: "COURSE" | "GIFT_CERTIFICATE";
+}) {
+  const stripe = getStripe();
+  const siteUrl = getSiteUrl();
+  const metadata = {
+    currency: input.purchase.currency,
+    customerEmail: input.customerEmail,
+    giftRecipientEmail: input.giftRecipientEmail ?? "",
+    orderId: input.order.id,
+    productId: input.purchase.product.id,
+    purchaseType: input.purchaseType,
+    tariffId: input.purchase.tariff?.id ?? "",
+  };
+  const session = await stripe.checkout.sessions.create({
+    mode: "payment",
+    success_url: `${siteUrl}/checkout/success?order=${input.order.id}&session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${siteUrl}/checkout/cancel?order=${input.order.id}`,
+    client_reference_id: input.order.id,
+    customer_email: input.order.customerEmail,
+    locale: "auto",
+    metadata,
+    payment_intent_data: {
+      metadata,
+    },
+    line_items: [
+      {
+        quantity: 1,
+        price_data: {
+          currency: input.purchase.currency.toLowerCase(),
+          unit_amount: input.purchase.amount,
+          product_data: {
+            name: input.purchase.displayTitle,
+            description: input.purchase.description,
+          },
+        },
+      },
+    ],
+  });
+
+  if (!session.url) {
+    throw new Error("Stripe session URL is missing");
+  }
+
+  const paymentIntentId = getStripePaymentIntentId(session.payment_intent);
+
+  await db.order.update({
+    where: { id: input.order.id },
+    data: {
+      providerOrderId: session.id,
+      stripeCheckoutSessionId: session.id,
+      stripePaymentIntentId: paymentIntentId,
+    },
+  });
+
+  await logIntegrationEvent({
+    source: "stripe",
+    event: "checkout-session-create",
+    orderId: input.order.id,
+    status: "SUCCESS",
+    requestBody: metadata,
+    responseBody: {
+      amount: input.purchase.amount,
+      currency: input.purchase.currency,
+      paymentIntentId,
+      sessionId: session.id,
+    },
+  });
+
+  return {
+    orderId: input.order.id,
+    publishableKey: getStripePublishableKey(),
+    url: session.url,
+  };
+}
+
+async function createFreedomPayCheckoutSession(input: {
+  order: Awaited<ReturnType<typeof createPendingCheckoutOrder>>;
+  purchase: Awaited<ReturnType<typeof resolveCheckoutPurchase>>;
+}) {
+  const payment = await createFreedomPayPayment({
+    amount: input.purchase.amount,
+    currency: input.purchase.currency,
+    customerEmail: input.order.customerEmail,
+    customerPhone: input.order.customerPhone,
+    description: input.purchase.displayTitle,
+    orderId: input.order.id,
+  });
+
+  await db.order.update({
+    where: { id: input.order.id },
+    data: {
+      providerOrderId: payment.responsePayload.pg_payment_id,
+    },
+  });
+
+  await logIntegrationEvent({
+    source: "freedompay",
+    event: "init-payment",
+    orderId: input.order.id,
+    status: "SUCCESS",
+    requestBody: payment.requestPayload,
+    responseBody: payment.responsePayload,
+  });
+
+  return {
+    orderId: input.order.id,
+    publishableKey: null,
+    url: payment.responsePayload.pg_redirect_url,
+  };
 }
 
 export async function POST(request: Request) {
@@ -36,124 +162,51 @@ export async function POST(request: Request) {
   }
 
   try {
+    if (!isCheckoutProviderAvailable(parsed.data.provider)) {
+      return NextResponse.json(
+        {
+          error: `${parsed.data.provider} is unavailable`,
+        },
+        { status: 400 }
+      );
+    }
+
     const purchase = await resolveCheckoutPurchase({
       productSlug: parsed.data.productSlug,
       tariffId: parsed.data.tariffId,
       currency: parsed.data.currency,
       purchaseType: parsed.data.purchaseType,
     });
-    const priceKgs = purchase.tariff?.priceKgs ?? purchase.product.priceKgs;
-    const priceUsd = purchase.tariff?.priceUsd ?? purchase.product.priceUsd;
-
-    if (priceKgs == null || priceUsd == null) {
-      return NextResponse.json(
-        { error: "Product must have both KGS and USD prices configured" },
-        { status: 400 }
-      );
-    }
-
-    const order = await db.order.create({
-      data: {
-        customerEmail: parsed.data.customerEmail,
-        customerName: parsed.data.customerName,
-        customerPhone: parsed.data.customerPhone,
-        giftRecipientEmail:
-          parsed.data.purchaseType === "GIFT_CERTIFICATE"
-            ? parsed.data.giftRecipientEmail ?? parsed.data.customerEmail
-            : null,
-        amount: purchase.amount,
-        currency: purchase.currency,
-        provider: "STRIPE",
-        purchaseType: parsed.data.purchaseType,
-        status: "PENDING",
-        syncStatus: "PENDING",
-        items: {
-          create: {
-            productId: purchase.product.id,
-            tariffId: purchase.tariff?.id ?? null,
-            title: purchase.displayTitle,
-            priceKgs,
-            priceUsd,
-          },
-        },
-      },
+    const order = await createPendingCheckoutOrder({
+      purchase,
+      provider: parsed.data.provider,
+      customerName: parsed.data.customerName,
+      customerEmail: parsed.data.customerEmail,
+      customerPhone: parsed.data.customerPhone,
+      giftRecipientEmail: parsed.data.giftRecipientEmail ?? null,
     });
 
-    const stripe = getStripe();
-    const siteUrl = getSiteUrl();
-    const metadata = {
-      orderId: order.id,
-      productId: purchase.product.id,
-      tariffId: purchase.tariff?.id ?? "",
-      purchaseType: parsed.data.purchaseType,
-      currency: purchase.currency,
-      customerEmail: parsed.data.customerEmail,
-      giftRecipientEmail: parsed.data.giftRecipientEmail ?? "",
-    };
-
     try {
-      const session = await stripe.checkout.sessions.create({
-        mode: "payment",
-        success_url: `${siteUrl}/checkout/success?order=${order.id}&session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${siteUrl}/checkout/cancel?order=${order.id}`,
-        client_reference_id: order.id,
-        customer_email: order.customerEmail,
-        locale: "auto",
-        metadata,
-        payment_intent_data: {
-          metadata,
-        },
-        line_items: [
-          {
-            quantity: 1,
-            price_data: {
-              currency: purchase.currency.toLowerCase(),
-              unit_amount: purchase.amount,
-              product_data: {
-                name: purchase.displayTitle,
-                description: purchase.description,
-              },
-            },
-          },
-        ],
-      });
+      const result =
+        parsed.data.provider === "FREEDOMPAY"
+          ? await createFreedomPayCheckoutSession({
+              order,
+              purchase,
+            })
+          : await createStripeCheckoutSession({
+              customerEmail: parsed.data.customerEmail,
+              giftRecipientEmail: parsed.data.giftRecipientEmail ?? null,
+              order,
+              purchase,
+              purchaseType: parsed.data.purchaseType,
+            });
 
-      const paymentIntentId = getStripePaymentIntentId(session.payment_intent);
-
-      await db.order.update({
-        where: { id: order.id },
-        data: {
-          providerOrderId: session.id,
-          stripeCheckoutSessionId: session.id,
-          stripePaymentIntentId: paymentIntentId,
-        },
-      });
-
-      await logIntegrationEvent({
-        source: "stripe",
-        event: "checkout-session-create",
-        orderId: order.id,
-        status: "SUCCESS",
-        requestBody: metadata,
-        responseBody: {
-          sessionId: session.id,
-          paymentIntentId,
-          amount: purchase.amount,
-          currency: purchase.currency,
-        },
-      });
-
-      if (!session.url) {
-        return NextResponse.json({ error: "Stripe session URL is missing" }, { status: 500 });
-      }
-
-      return NextResponse.json({
-        url: session.url,
-        orderId: order.id,
-        publishableKey: process.env.STRIPE_PUBLISHABLE_KEY ?? null,
-      });
+      return NextResponse.json(result);
     } catch (error) {
-      const message = getErrorMessage(error);
+      const message =
+        parsed.data.provider === "FREEDOMPAY"
+          ? getFreedomPayErrorMessage(error)
+          : getErrorMessage(error);
 
       await db.order.update({
         where: { id: order.id },
@@ -164,11 +217,16 @@ export async function POST(request: Request) {
       });
 
       await logIntegrationEvent({
-        source: "stripe",
-        event: "checkout-session-create",
+        source: parsed.data.provider === "FREEDOMPAY" ? "freedompay" : "stripe",
+        event: parsed.data.provider === "FREEDOMPAY" ? "init-payment" : "checkout-session-create",
         orderId: order.id,
         status: "FAILED",
-        requestBody: metadata,
+        requestBody: {
+          currency: purchase.currency,
+          orderId: order.id,
+          provider: parsed.data.provider,
+          purchaseType: parsed.data.purchaseType,
+        },
         error: message,
       });
 

@@ -2,15 +2,16 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { LandingContentForm } from "@/components/admin/LandingContentForm";
+import { resolveLandingContent } from "@/lib/landing-content";
 
 export default async function LandingAdminPage() {
   const session = await auth();
   if (!session?.user) redirect("/admin/login");
 
   const settings = await db.siteSettings.findUnique({ where: { id: 1 } });
-  const landingContent = (settings?.landingContent ?? null) as unknown as Parameters<
-    typeof LandingContentForm
-  >[0]["initialData"];
+  const landingContent = settings?.landingContent
+    ? resolveLandingContent(settings.landingContent)
+    : null;
 
   return (
     <div className="p-4 sm:p-6 space-y-6 max-w-4xl">

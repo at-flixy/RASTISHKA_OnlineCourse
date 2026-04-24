@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 interface ImageUploadProps {
   value: string;
   onChange: (url: string) => void;
-  aspect?: "video" | "square" | "product"; // 16:9 | 1:1 | 3:2
+  aspect?: "video" | "square" | "product" | "story"; // 16:9 | 1:1 | 3:2 | 4:5
   label?: string;
 }
 
@@ -18,6 +18,7 @@ const aspectClasses = {
   video: "aspect-video",
   square: "aspect-square",
   product: "aspect-[3/2]",
+  story: "aspect-[4/5]",
 };
 
 export function ImageUpload({

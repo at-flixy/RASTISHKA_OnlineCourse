@@ -77,6 +77,15 @@ body {
   color: var(--foreground);
 }
 
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* ─── TipTap / Prose styles ──────────────────────────────────────────────────── */
 .prose {
   color: var(--foreground);

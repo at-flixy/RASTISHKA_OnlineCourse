@@ -2,39 +2,72 @@
 
 import { useState, useTransition, type FormEvent } from "react";
 import { CreditCard, Gift, ShieldCheck } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { formatMoney } from "@/lib/order-meta";
-import type { CheckoutCurrency, PurchaseType } from "@/lib/payments/catalog";
+import type { CheckoutCurrency, CheckoutProvider, PurchaseType } from "@/lib/payments/catalog";
 
 type CheckoutTariff = {
-  id: string;
-  name: string;
-  tagline: string | null;
   durationLabel: string;
+  id: string;
+  includes: string[];
+  name: string;
   priceKgs: number;
   priceUsd: number;
-  includes: string[];
+  tagline: string | null;
 };
 
 type CheckoutProduct = {
-  slug: string;
-  title: string;
-  shortDescription: string;
   durationLabel: string | null;
   priceKgs: number | null;
   priceUsd: number | null;
+  shortDescription: string;
+  slug: string;
   tariffs: CheckoutTariff[];
+  title: string;
 };
 
 type CheckoutFormProps = {
-  product: CheckoutProduct;
-  initialTariffId: string | null;
+  availableProviders: CheckoutProvider[];
   initialCurrency: CheckoutCurrency;
+  initialProvider: CheckoutProvider;
+  initialTariffId: string | null;
+  product: CheckoutProduct;
   purchaseType: PurchaseType;
+};
+
+const providerCopy: Record<
+  CheckoutProvider,
+  {
+    accent: string;
+    description: string;
+    nextStep: string;
+    pendingLabel: string;
+    recommendation: string;
+    title: string;
+  }
+> = {
+  FREEDOMPAY: {
+    accent: "Основной",
+    description: "Оплата картой через Freedom Pay с переходом на защищённую страницу провайдера.",
+    nextStep:
+      "Оплата пройдёт на защищённой странице Freedom Pay. После подтверждения сайт дождётся server-to-server уведомления или автоматически сверит статус.",
+    pendingLabel: "Переход в Freedom Pay...",
+    recommendation: "По умолчанию",
+    title: "Freedom Pay",
+  },
+  STRIPE: {
+    accent: "Резервный",
+    description: "Оплата картой через Stripe Checkout с поддержкой международных карт и 3D Secure.",
+    nextStep:
+      "Оплата пройдёт на защищённой странице Stripe Checkout. После подтверждения заказ автоматически синхронизируется в системе.",
+    pendingLabel: "Переход в Stripe...",
+    recommendation: "Альтернатива",
+    title: "Stripe",
+  },
 };
 
 function getAvailableCurrencies(priceKgs: number | null, priceUsd: number | null) {
@@ -52,13 +85,18 @@ function getAvailableCurrencies(priceKgs: number | null, priceUsd: number | null
 }
 
 export function CheckoutForm({
+  availableProviders,
   product,
   initialTariffId,
   initialCurrency,
+  initialProvider,
   purchaseType,
 }: CheckoutFormProps) {
   const [selectedTariffId, setSelectedTariffId] = useState(initialTariffId);
   const [currency, setCurrency] = useState<CheckoutCurrency>(initialCurrency);
+  const [provider, setProvider] = useState<CheckoutProvider>(
+    availableProviders.includes(initialProvider) ? initialProvider : (availableProviders[0] ?? initialProvider)
+  );
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -71,7 +109,8 @@ export function CheckoutForm({
   const priceUsd = selectedTariff?.priceUsd ?? product.priceUsd;
   const availableCurrencies = getAvailableCurrencies(priceKgs, priceUsd);
   const amount = currency === "KGS" ? priceKgs : priceUsd;
-  const title = selectedTariff ? `${product.title} — ${selectedTariff.name}` : product.title;
+  const title = selectedTariff ? `${product.title} - ${selectedTariff.name}` : product.title;
+  const currentProvider = providerCopy[provider];
 
   const handleTariffChange = (tariffId: string) => {
     setSelectedTariffId(tariffId);
@@ -98,13 +137,13 @@ export function CheckoutForm({
             tariffId: selectedTariffId,
             purchaseType,
             currency,
+            provider,
             customerName,
             customerEmail,
             customerPhone,
             giftRecipientEmail: purchaseType === "GIFT_CERTIFICATE" ? giftRecipientEmail || null : null,
           }),
         });
-
         const data = (await response.json()) as { error?: string; url?: string };
 
         if (!response.ok || !data.url) {
@@ -127,7 +166,7 @@ export function CheckoutForm({
             <Badge variant={purchaseType === "GIFT_CERTIFICATE" ? "secondary" : "default"}>
               {purchaseType === "GIFT_CERTIFICATE" ? "Подарок" : "Оплата курса"}
             </Badge>
-            <Badge variant="outline">Stripe Checkout</Badge>
+            <Badge variant="outline">{currentProvider.title}</Badge>
           </div>
           <CardTitle className="text-2xl">{title}</CardTitle>
           <CardDescription>{product.shortDescription}</CardDescription>
@@ -195,6 +234,41 @@ export function CheckoutForm({
               </div>
             </div>
 
+            {availableProviders.length > 1 && (
+              <div className="space-y-3">
+                <Label>Способ оплаты</Label>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {availableProviders.map((providerKey) => {
+                    const item = providerCopy[providerKey];
+                    const active = provider === providerKey;
+
+                    return (
+                      <button
+                        key={providerKey}
+                        type="button"
+                        onClick={() => setProvider(providerKey)}
+                        className={`rounded-xl border p-4 text-left transition-colors ${
+                          active
+                            ? "border-primary bg-primary/5"
+                            : "border-border bg-background hover:border-primary/40"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="space-y-1">
+                            <div className="font-semibold text-foreground">{item.title}</div>
+                            <div className="text-sm text-muted-foreground">{item.description}</div>
+                          </div>
+                          <Badge variant={providerKey === "FREEDOMPAY" ? "default" : "secondary"}>
+                            {item.recommendation}
+                          </Badge>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="customerName">Ваше имя</Label>
@@ -253,8 +327,8 @@ export function CheckoutForm({
             <Button type="submit" size="lg" className="w-full" disabled={isPending || amount == null}>
               <CreditCard className="h-4 w-4" />
               {isPending
-                ? "Переход к оплате..."
-                : `Перейти к оплате — ${formatMoney(amount ?? 0, currency)}`}
+                ? currentProvider.pendingLabel
+                : `Перейти к оплате - ${formatMoney(amount ?? 0, currency)}`}
             </Button>
           </form>
         </CardContent>
@@ -286,6 +360,13 @@ export function CheckoutForm({
               <span className="text-muted-foreground">Валюта</span>
               <span className="font-medium">{currency}</span>
             </div>
+            <div className="flex items-start justify-between gap-3">
+              <span className="text-muted-foreground">Провайдер</span>
+              <div className="text-right">
+                <div className="font-medium">{currentProvider.title}</div>
+                <div className="text-xs text-muted-foreground">{currentProvider.accent}</div>
+              </div>
+            </div>
             <div className="flex items-start justify-between gap-3 border-t border-border pt-3 text-base">
               <span className="font-medium">К оплате</span>
               <span className="font-semibold text-primary">{formatMoney(amount ?? 0, currency)}</span>
@@ -300,7 +381,7 @@ export function CheckoutForm({
           <CardContent className="space-y-3 text-sm text-muted-foreground">
             <div className="flex items-start gap-2">
               <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-              <span>Оплата пройдёт на защищённой странице Stripe с поддержкой 3D Secure.</span>
+              <span>{currentProvider.nextStep}</span>
             </div>
             <div className="flex items-start gap-2">
               <CreditCard className="mt-0.5 h-4 w-4 shrink-0 text-primary" />

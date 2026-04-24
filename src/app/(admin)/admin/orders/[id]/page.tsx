@@ -1,8 +1,6 @@
+import { redirect, notFound } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { redirect, notFound } from "next/navigation";
 import {
   formatMoney,
   orderStatusLabels,
@@ -11,6 +9,9 @@ import {
   syncStatusLabels,
   syncStatusVariants,
 } from "@/lib/order-meta";
+import { getPaymentProviderLabel } from "@/lib/payments/provider-meta";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface OrderDetailsPageProps {
   params: Promise<{ id: string }>;
@@ -18,7 +19,10 @@ interface OrderDetailsPageProps {
 
 export default async function OrderDetailsPage({ params }: OrderDetailsPageProps) {
   const session = await auth();
-  if (!session?.user) redirect("/admin/login");
+
+  if (!session?.user) {
+    redirect("/admin/login");
+  }
 
   const { id } = await params;
   const order = await db.order.findUnique({
@@ -51,6 +55,7 @@ export default async function OrderDetailsPage({ params }: OrderDetailsPageProps
     orderBy: { createdAt: "desc" },
     take: 30,
   });
+  const providerLabel = getPaymentProviderLabel(order.provider);
 
   return (
     <div className="p-6 space-y-6">
@@ -101,20 +106,20 @@ export default async function OrderDetailsPage({ params }: OrderDetailsPageProps
               <span className="text-muted-foreground">Подтверждённая валюта:</span> {order.paidCurrency ?? "—"}
             </div>
             <div>
-              <span className="text-muted-foreground">Провайдер:</span> {order.provider}
+              <span className="text-muted-foreground">Провайдер:</span> {providerLabel}
             </div>
             <div>
-              <span className="text-muted-foreground">providerOrderId:</span> {order.providerOrderId ?? "—"}
+              <span className="text-muted-foreground">Payment ID провайдера:</span> {order.providerOrderId ?? "—"}
             </div>
             <div>
               <span className="text-muted-foreground">Stripe session:</span> {order.stripeCheckoutSessionId ?? "—"}
             </div>
             <div>
-              <span className="text-muted-foreground">Stripe payment intent:</span> {order.stripePaymentIntentId ?? "—"}
+              <span className="text-muted-foreground">Stripe payment intent:</span>{" "}
+              {order.stripePaymentIntentId ?? "—"}
             </div>
             <div>
-              <span className="text-muted-foreground">Оплачен:</span>{" "}
-              {order.paidAt?.toLocaleString("ru-RU") ?? "—"}
+              <span className="text-muted-foreground">Оплачен:</span> {order.paidAt?.toLocaleString("ru-RU") ?? "—"}
             </div>
           </CardContent>
         </Card>

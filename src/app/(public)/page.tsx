@@ -1,5 +1,7 @@
 import { db } from "@/lib/db";
+import { resolveLandingContent } from "@/lib/landing-content";
 import { CourseCard } from "@/components/marketing/CourseCard";
+import { ReviewsSection } from "@/components/marketing/ReviewsSection";
 import { Metadata } from "next";
 import { connection } from "next/server";
 import Image from "next/image";
@@ -7,68 +9,6 @@ import Link from "next/link";
 import { MessageCircle, Send, AtSign, Gift, Award, Heart, Users } from "lucide-react";
 
 export const dynamic = "force-dynamic";
-
-// ── Types ────────────────────────────────────────────────────────────────────
-
-interface LandingContent {
-  hero: {
-    badge: string;
-    titleLine1: string;
-    titleHighlight: string;
-    titleLine2: string;
-    description: string;
-    ctaButton: string;
-    whatsappButton: string;
-  };
-  stats: Array<{ value: string; label: string }>;
-  courses: { title: string; subtitle: string };
-  about: {
-    title: string;
-    bio: string;
-    linkText: string;
-    cards: Array<{ title: string; desc: string }>;
-  };
-  gift: { title: string; subtitle: string; button: string };
-}
-
-const DEFAULTS: LandingContent = {
-  hero: {
-    badge: "Детский массаж онлайн",
-    titleLine1: "Массаж, который",
-    titleHighlight: "меняет жизнь",
-    titleLine2: "ребёнка",
-    description:
-      "Онлайн-курсы для родителей и специалистов от реабилитолога с опытом 10+ лет. Работаю с детьми с РАС, ЗПРР, СДВГ. Системный подход через тело и нервную систему.",
-    ctaButton: "Смотреть курсы",
-    whatsappButton: "Написать в WhatsApp",
-  },
-  stats: [
-    { value: "10+", label: "лет опыта" },
-    { value: "500+", label: "учеников" },
-    { value: "6", label: "курсов" },
-    { value: "100%", label: "онлайн" },
-  ],
-  courses: {
-    title: "Курсы и материалы",
-    subtitle: "Системные знания по детскому массажу — от базового до углублённого",
-  },
-  about: {
-    title: "Кто ведёт курсы?",
-    bio: "Светлана Масалова — реабилитолог, специалист по детскому массажу с опытом работы более 10 лет. Бишкек, Кыргызстан.\n\nСпециализируется на работе с особенными детьми: РАС, ЗПРР, СДВГ, ДЦП. Помогает родителям понять, как через массаж влиять на состояние нервной системы ребёнка.\n\nСоздала систему онлайн-курсов, чтобы дать знания семьям, где нет доступа к специалисту рядом.",
-    linkText: "Подробнее обо мне →",
-    cards: [
-      { title: "Реабилитолог", desc: "Профессиональная подготовка и сертификаты" },
-      { title: "Педагог", desc: "Умею объяснять сложное простыми словами" },
-      { title: "10+ лет", desc: "Практического опыта с особенными детьми" },
-      { title: "500+ учеников", desc: "Из России, Казахстана, Кыргызстана" },
-    ],
-  },
-  gift: {
-    title: "Подарите знания близким",
-    subtitle: "Подарочный сертификат на любой курс — идеальный подарок для молодых родителей",
-    button: "Оформить сертификат",
-  },
-};
 
 const STAT_ICONS = [Award, Users, Heart, Gift];
 
@@ -106,7 +46,7 @@ export default async function HomePage() {
     db.siteSettings.findUnique({ where: { id: 1 } }),
   ]);
 
-  const lc: LandingContent = (settings?.landingContent as unknown as LandingContent) ?? DEFAULTS;
+  const lc = resolveLandingContent(settings?.landingContent);
 
   return (
     <>
@@ -182,6 +122,7 @@ export default async function HomePage() {
                   src={settings?.heroImageUrl ?? "/images/hero.jpg"}
                   alt="Светлана Масалова — реабилитолог, массажист"
                   fill
+                  sizes="(max-width: 1024px) 100vw, 50vw"
                   className="object-cover object-right-top"
                   priority
                 />
@@ -238,6 +179,12 @@ export default async function HomePage() {
           )}
         </div>
       </section>
+
+      <ReviewsSection
+        title={lc.reviews.title}
+        subtitle={lc.reviews.subtitle}
+        items={lc.reviews.items}
+      />
 
       {/* ─── About teaser ──────────────────────────────────────────────────────── */}
       <section className="bg-muted/30 py-16 sm:py-20">

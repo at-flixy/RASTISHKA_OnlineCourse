@@ -2,6 +2,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { db } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -47,7 +48,7 @@ export default async function CheckoutCancelPage({ searchParams }: CancelPagePro
   const params = await searchParams;
   const orderId = params.order;
   const order = orderId
-    ? await (await import("@/lib/db")).db.order.findUnique({
+    ? await db.order.findUnique({
         where: { id: orderId },
         include: {
           items: {
@@ -63,25 +64,26 @@ export default async function CheckoutCancelPage({ searchParams }: CancelPagePro
         },
       })
     : null;
-
   const primaryItem = order?.items[0];
   const retryUrl = order ? buildRetryUrl(order) : "/";
 
   return (
     <div className="py-16 sm:py-20">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 space-y-6">
+      <div className="mx-auto max-w-3xl space-y-6 px-4 sm:px-6">
         <Card>
           <CardHeader>
             <CardTitle className="text-3xl">Оплата не завершена</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 text-sm text-muted-foreground">
             <p>
-              Вы вышли из Stripe Checkout до завершения оплаты. Заказ не был подтверждён, но вы можете вернуться к нему
-              и попробовать снова.
+              Вы закрыли страницу оплаты до завершения платежа. Заказ не был подтверждён, но вы
+              можете вернуться к нему и попробовать снова.
             </p>
             {primaryItem && (
-              <div className="rounded-lg border border-border p-4 bg-background">
-                <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Незавершённый заказ</div>
+              <div className="space-y-1 rounded-lg border border-border bg-background p-4">
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Незавершённый заказ
+                </div>
                 <div className="font-medium text-foreground">{primaryItem.product.title}</div>
               </div>
             )}

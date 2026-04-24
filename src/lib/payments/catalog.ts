@@ -3,9 +3,11 @@ import { db } from "@/lib/db";
 
 export const currencySchema = z.enum(["KGS", "USD"]);
 export const purchaseTypeSchema = z.enum(["COURSE", "GIFT_CERTIFICATE"]);
+export const providerSchema = z.enum(["FREEDOMPAY", "STRIPE"]);
 
 export type CheckoutCurrency = z.infer<typeof currencySchema>;
 export type PurchaseType = z.infer<typeof purchaseTypeSchema>;
+export type CheckoutProvider = z.infer<typeof providerSchema>;
 
 export function normalizePurchaseType(value?: string | null): PurchaseType {
   if (!value) {
@@ -15,11 +17,25 @@ export function normalizePurchaseType(value?: string | null): PurchaseType {
   return value === "gift" || value === "GIFT_CERTIFICATE" ? "GIFT_CERTIFICATE" : "COURSE";
 }
 
+export function normalizeCheckoutProvider(
+  value?: string | null,
+  availableProviders?: CheckoutProvider[]
+): CheckoutProvider {
+  const requestedProvider = value === "STRIPE" ? "STRIPE" : "FREEDOMPAY";
+
+  if (availableProviders?.length) {
+    return availableProviders.includes(requestedProvider) ? requestedProvider : availableProviders[0];
+  }
+
+  return requestedProvider;
+}
+
 export const createCheckoutSessionSchema = z.object({
   productSlug: z.string().min(1),
   tariffId: z.string().min(1).optional().nullable(),
   purchaseType: purchaseTypeSchema.default("COURSE"),
   currency: currencySchema.default("KGS"),
+  provider: providerSchema.default("FREEDOMPAY"),
   customerName: z.string().min(2).max(120),
   customerEmail: z.string().email(),
   customerPhone: z.string().min(5).max(40),
