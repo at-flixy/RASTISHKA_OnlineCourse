@@ -1,15 +1,15 @@
-import { notFound } from "next/navigation";
-import { connection } from "next/server";
-import { CheckoutForm } from "@/components/checkout/CheckoutForm";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CheckoutForm } from "@/components/checkout/CheckoutForm"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   getCheckoutProduct,
   getDefaultCurrency,
   getDefaultTariffId,
   normalizeCheckoutProvider,
   normalizePurchaseType,
-} from "@/lib/payments/catalog";
-import { getAvailableCheckoutProviders } from "@/lib/payments/provider-meta";
+} from "@/lib/payments/catalog"
+import { getAvailableCheckoutProviders } from "@/lib/payments/provider-meta"
+import { notFound } from "next/navigation"
+import { connection } from "next/server"
 
 export const dynamic = "force-dynamic";
 
@@ -98,8 +98,7 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
               <CardTitle>Платежи временно недоступны</CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground">
-              Платёжный провайдер ещё не настроен в окружении проекта. Добавьте ключи Freedom Pay и
-              откройте страницу снова.
+              Платёжный провайдер ещё не настроен в окружении проекта.
             </CardContent>
           </Card>
         )}
