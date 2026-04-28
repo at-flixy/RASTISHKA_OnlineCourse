@@ -25,6 +25,7 @@ enum PaymentProvider {
   FREEDOMPAY
   STRIPE
   YOOKASSA
+  MANUAL
 }
 
 enum PurchaseType {
