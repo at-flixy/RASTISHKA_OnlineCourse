@@ -1,20 +1,24 @@
 import Script from "next/script";
 import { connection } from "next/server";
-import { db } from "@/lib/db";
-import { hasDatabaseUrl } from "@/lib/database-url";
+import { Suspense } from "react";
+import { getSiteSettings } from "@/lib/site-settings";
+import { RouteTracker } from "@/components/RouteTracker";
 
 export async function Analytics() {
-  if (!hasDatabaseUrl()) {
-    return null;
-  }
-
   await connection();
-  const settings = await db.siteSettings.findUnique({ where: { id: 1 } });
+  const settings = await getSiteSettings();
+  if (!settings) return null;
+
+  const hasYandex = Boolean(settings.yandexMetricaId);
+  const hasGa = Boolean(settings.gaId);
+  const hasPixel = Boolean(settings.metaPixelId);
+
+  if (!hasYandex && !hasGa && !hasPixel) return null;
 
   return (
     <>
       {/* Яндекс.Метрика */}
-      {settings?.yandexMetricaId && (
+      {hasYandex && (
         <Script
           id="yandex-metrica"
           strategy="afterInteractive"
@@ -37,7 +41,7 @@ export async function Analytics() {
       )}
 
       {/* Google Analytics 4 */}
-      {settings?.gaId && (
+      {hasGa && (
         <>
           <Script
             src={`https://www.googletagmanager.com/gtag/js?id=${settings.gaId}`}
@@ -59,7 +63,7 @@ export async function Analytics() {
       )}
 
       {/* Meta Pixel */}
-      {settings?.metaPixelId && (
+      {hasPixel && (
         <Script
           id="meta-pixel"
           strategy="afterInteractive"
@@ -76,6 +80,14 @@ export async function Analytics() {
           }}
         />
       )}
+
+      <Suspense fallback={null}>
+        <RouteTracker
+          yandexMetricaId={settings.yandexMetricaId}
+          hasGa={hasGa}
+          hasPixel={hasPixel}
+        />
+      </Suspense>
     </>
   );
 }

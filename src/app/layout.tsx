@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Analytics } from "@/components/Analytics";
 
 export const metadata: Metadata = {
   title: {
@@ -19,7 +18,6 @@ export default function RootLayout({
     <html lang="ru" className="h-full antialiased">
       <body className="min-h-full flex flex-col bg-background text-foreground">
         {children}
-        <Analytics />
       </body>
     </html>
   );

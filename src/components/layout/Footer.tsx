@@ -1,8 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { connection } from "next/server";
-import { db } from "@/lib/db";
 import { hasDatabaseUrl } from "@/lib/database-url";
+import { getSiteSettings } from "@/lib/site-settings";
 import { MessageCircle, Send, AtSign } from "lucide-react";
 import { legalEntity } from "@/lib/legal";
 
@@ -11,9 +11,7 @@ export async function Footer() {
     await connection();
   }
 
-  const settings = hasDatabaseUrl()
-    ? await db.siteSettings.findUnique({ where: { id: 1 } })
-    : null;
+  const settings = await getSiteSettings();
 
   return (
     <footer className="bg-[#1e1b4b] text-white/80 mt-20">
