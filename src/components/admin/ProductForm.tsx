@@ -48,6 +48,10 @@ const productSchema = z.object({
   priceKgs: z.number().int().nonnegative().optional().nullable(),
   priceUsd: z.number().int().nonnegative().optional().nullable(),
   getcourseGroupName: z.string().optional(),
+  ctaTitle: z.string().optional(),
+  ctaSubtitle: z.string().optional(),
+  ctaFeatures: z.array(z.object({ value: z.string() })),
+  ctaButtonLabel: z.string().optional(),
   isPublished: z.boolean(),
   tariffs: z.array(tariffSchema),
 });
@@ -65,6 +69,10 @@ type InitialProduct = {
   priceKgs?: number | null;
   priceUsd?: number | null;
   getcourseGroupName?: string | null;
+  ctaTitle?: string | null;
+  ctaSubtitle?: string | null;
+  ctaFeatures?: string[];
+  ctaButtonLabel?: string | null;
   isPublished: boolean;
   tariffs: {
     id?: string;
@@ -100,6 +108,10 @@ export function ProductForm({ product, isNew = false }: ProductFormProps) {
     priceKgs: product?.priceKgs ?? null,
     priceUsd: product?.priceUsd ?? null,
     getcourseGroupName: product?.getcourseGroupName ?? "",
+    ctaTitle: product?.ctaTitle ?? "",
+    ctaSubtitle: product?.ctaSubtitle ?? "",
+    ctaFeatures: (product?.ctaFeatures ?? []).map((v) => ({ value: v })),
+    ctaButtonLabel: product?.ctaButtonLabel ?? "",
     isPublished: product?.isPublished ?? false,
     tariffs: (product?.tariffs ?? []).map((t) => ({
       ...t,
@@ -125,6 +137,15 @@ export function ProductForm({ product, isNew = false }: ProductFormProps) {
     name: "tariffs",
   });
 
+  const {
+    fields: ctaFeatureFields,
+    append: appendCtaFeature,
+    remove: removeCtaFeature,
+  } = useFieldArray({
+    control,
+    name: "ctaFeatures",
+  });
+
   const hasTariffs = tariffFields.length > 0;
 
   const onSubmit = async (values: ProductFormValues) => {
@@ -136,6 +157,10 @@ export function ProductForm({ product, isNew = false }: ProductFormProps) {
       thumbnailUrl: values.thumbnailUrl || null,
       durationLabel: values.durationLabel || null,
       getcourseGroupName: values.getcourseGroupName || null,
+      ctaTitle: values.ctaTitle || null,
+      ctaSubtitle: values.ctaSubtitle || null,
+      ctaButtonLabel: values.ctaButtonLabel || null,
+      ctaFeatures: values.ctaFeatures.map((f) => f.value).filter(Boolean),
       tariffs: values.tariffs.map((t, i) => ({
         ...t,
         tagline: t.tagline || null,
@@ -368,6 +393,79 @@ export function ProductForm({ product, isNew = false }: ProductFormProps) {
               isLast={index === tariffFields.length - 1}
             />
           ))}
+        </CardContent>
+      </Card>
+
+      {/* CTA block */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">CTA-блок «Готовы начать?»</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-xs text-muted-foreground">
+            Отображается на странице курса под описанием для курсов без тарифов. Оставьте поля пустыми, чтобы использовать значения по умолчанию.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="ctaTitle">Заголовок</Label>
+              <Input
+                id="ctaTitle"
+                {...register("ctaTitle")}
+                placeholder="Готовы начать?"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="ctaButtonLabel">Текст кнопки</Label>
+              <Input
+                id="ctaButtonLabel"
+                {...register("ctaButtonLabel")}
+                placeholder="Записаться за 6 900 с"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="ctaSubtitle">Подзаголовок</Label>
+            <Input
+              id="ctaSubtitle"
+              {...register("ctaSubtitle")}
+              placeholder="Доступ открывается сразу после оплаты через GetCourse"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Пункты блока</Label>
+            {ctaFeatureFields.map((field, idx) => (
+              <div key={field.id} className="flex gap-2">
+                <Input
+                  {...register(`ctaFeatures.${idx}.value`)}
+                  placeholder="Видеоуроки в удобном формате"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => removeCtaFeature(idx)}
+                  className="text-destructive hover:text-destructive shrink-0"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => appendCtaFeature({ value: "" })}
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Добавить пункт
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Если оставить пустым, будут показаны пункты по умолчанию (видеоуроки, доступ, методические материалы, поддержка куратора).
+            </p>
+          </div>
         </CardContent>
       </Card>
 

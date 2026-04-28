@@ -27,6 +27,10 @@ const productSchema = z.object({
   priceKgs: z.number().int().nonnegative().optional().nullable(),
   priceUsd: z.number().int().nonnegative().optional().nullable(),
   getcourseGroupName: nullableStringSchema,
+  ctaTitle: nullableStringSchema,
+  ctaSubtitle: nullableStringSchema,
+  ctaFeatures: z.array(z.string()).default([]),
+  ctaButtonLabel: nullableStringSchema,
   isPublished: z.boolean().default(false),
   tariffs: z.array(tariffSchema).default([]),
 });
@@ -66,6 +70,10 @@ export async function POST(request: Request) {
       thumbnailUrl: productData.thumbnailUrl || null,
       durationLabel: productData.durationLabel || null,
       getcourseGroupName: productData.getcourseGroupName || null,
+      ctaTitle: productData.ctaTitle || null,
+      ctaSubtitle: productData.ctaSubtitle || null,
+      ctaFeatures: productData.ctaFeatures,
+      ctaButtonLabel: productData.ctaButtonLabel || null,
       order: nextOrder,
       tariffs:
         tariffs.length > 0

@@ -80,6 +80,10 @@ model Product {
   priceKgs         Int?
   priceUsd         Int?
   getcourseGroupName String?
+  ctaTitle         String?
+  ctaSubtitle      String?
+  ctaFeatures      String[]
+  ctaButtonLabel   String?
   tariffs          Tariff[]
   orderItems       OrderItem[]
   createdAt        DateTime    @default(now())
