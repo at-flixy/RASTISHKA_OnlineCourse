@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { auth } from "@/lib/auth";
-import { db } from "@/lib/db";
 import { hasDatabaseUrl } from "@/lib/database-url";
+import { getSiteSettings } from "@/lib/site-settings";
 import { MessageCircle, Send, AtSign, User } from "lucide-react";
 
 export async function Header() {
@@ -10,10 +10,7 @@ export async function Header() {
     await connection();
   }
 
-  const [settings, session] = await Promise.all([
-    hasDatabaseUrl() ? db.siteSettings.findUnique({ where: { id: 1 } }) : null,
-    auth(),
-  ]);
+  const [settings, session] = await Promise.all([getSiteSettings(), auth()]);
   const accountHref = session?.user?.role === "ADMIN" ? "/admin" : "/account";
 
   return (

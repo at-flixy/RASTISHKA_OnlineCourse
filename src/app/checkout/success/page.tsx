@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { connection } from "next/server";
 import { PendingOrderRefresh } from "@/components/checkout/PendingOrderRefresh";
+import { PurchaseTracker } from "@/components/checkout/PurchaseTracker";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { db } from "@/lib/db";
+import { getSiteSettings } from "@/lib/site-settings";
 import {
   formatMoney,
   orderStatusLabels,
@@ -65,8 +67,23 @@ export default async function CheckoutSuccessPage({ searchParams }: SuccessPageP
 
   const primaryItem = order?.items[0];
 
+  const settings = order?.status === "PAID" ? await getSiteSettings() : null;
+
   return (
     <div className="py-16 sm:py-20">
+      {order?.status === "PAID" && (
+        <PurchaseTracker
+          orderId={order.id}
+          amountMinor={order.amount}
+          currency={order.currency}
+          items={order.items.map((i) => ({
+            id: i.tariffId ?? i.productId,
+            name: i.tariff ? `${i.product.title} - ${i.tariff.name}` : i.product.title,
+            price: order.currency === "USD" ? i.priceUsd : i.priceKgs,
+          }))}
+          yandexMetricaId={settings?.yandexMetricaId ?? null}
+        />
+      )}
       <div className="mx-auto max-w-3xl space-y-6 px-4 sm:px-6">
         <Card>
           <CardHeader>

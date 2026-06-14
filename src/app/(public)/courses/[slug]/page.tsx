@@ -45,9 +45,9 @@ export default async function CoursePage({ params }: Props) {
   if (!product) notFound();
 
   const hasTariffs = product.tariffs.length > 0;
-  const ctaTitle = product.ctaTitle || "Готовы начать?";
+  const ctaTitle = product.ctaTitle?.trim() || "Готовы начать?";
   const ctaSubtitle =
-    product.ctaSubtitle || "Доступ открывается сразу после оплаты через GetCourse";
+    product.ctaSubtitle?.trim() || "Доступ открывается сразу после оплаты через GetCourse";
   const ctaFeatures =
     product.ctaFeatures.length > 0
       ? product.ctaFeatures
@@ -58,7 +58,8 @@ export default async function CoursePage({ params }: Props) {
           "Поддержка куратора",
         ];
   const ctaButtonLabel =
-    product.ctaButtonLabel || `Записаться за ${product.priceKgs?.toLocaleString("ru-RU")} с`;
+    product.ctaButtonLabel?.trim() ||
+    `Записаться за ${product.priceKgs?.toLocaleString("ru-RU")} с`;
 
   return (
     <div>
@@ -167,7 +168,7 @@ export default async function CoursePage({ params }: Props) {
         <section className="py-12 bg-muted/30">
           <div className="max-w-2xl mx-auto px-4 sm:px-6 text-center">
             <h2 className="text-2xl font-bold text-foreground mb-4">{ctaTitle}</h2>
-            {ctaSubtitle && <p className="text-muted-foreground mb-6">{ctaSubtitle}</p>}
+            <p className="text-muted-foreground mb-6">{ctaSubtitle}</p>
             <div className="bg-white rounded-2xl border border-border p-6 mb-6 text-left space-y-3">
               {ctaFeatures.map((item) => (
                 <div key={item} className="flex items-center gap-2 text-sm">
