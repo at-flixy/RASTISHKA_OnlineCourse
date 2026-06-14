@@ -47,6 +47,14 @@ export function getAvailableCheckoutProviders() {
 }
 
 export function getPaymentProviderLabel(provider?: string | null) {
+  if (provider === "MANUAL") {
+    return "Ручная выдача";
+  }
+
+  if (provider === "CERTIFICATE") {
+    return "Подарочный сертификат";
+  }
+
   if (provider === "FREEDOMPAY" || provider === "STRIPE") {
     return paymentProviderLabels[provider];
   }

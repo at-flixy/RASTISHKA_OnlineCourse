@@ -4,8 +4,9 @@ import { logIntegrationEvent } from "@/lib/integration-log";
 import { fulfillPaidOrder } from "@/lib/payments/fulfillment";
 import { getSiteUrl } from "@/lib/site-url";
 
-const FREEDOMPAY_INIT_PAYMENT_URL = "https://api.freedompay.kz/init_payment";
-const FREEDOMPAY_STATUS_URL = "https://api.freedompay.kz/get_status3.php";
+const DEFAULT_FREEDOMPAY_API_BASE_URL = "https://api.freedompay.kg";
+const FREEDOMPAY_INIT_PAYMENT_SCRIPT = "init_payment";
+const FREEDOMPAY_STATUS_SCRIPT = "get_status3.php";
 
 type FreedomPayPrimitive = string | number | boolean;
 type FreedomPayValue =
@@ -39,6 +40,17 @@ function getRequiredEnv(name: string) {
   }
 
   return value;
+}
+
+function getFreedomPayApiBaseUrl() {
+  return (process.env.FREEDOMPAY_API_BASE_URL?.trim() || DEFAULT_FREEDOMPAY_API_BASE_URL).replace(
+    /\/+$/,
+    ""
+  );
+}
+
+function getFreedomPayApiUrl(scriptName: string) {
+  return `${getFreedomPayApiBaseUrl()}/${scriptName}`;
 }
 
 export function getFreedomPayMerchantId() {
@@ -148,7 +160,7 @@ function withFreedomPaySignature(
 }
 
 function formatFreedomPayAmount(amount: number) {
-  return (amount / 100).toFixed(2);
+  return amount.toFixed(2);
 }
 
 function decodeXmlEntities(value: string) {
@@ -166,10 +178,26 @@ function getXmlTagValue(xml: string, tag: string) {
   return match ? decodeXmlEntities(match[1].trim()) : null;
 }
 
+function getXmlRootContent(xml: string) {
+  const match = xml.match(/<([A-Za-z0-9_:-]+)(?:\s[^>]*)?>([\s\S]*)<\/\1>\s*$/);
+
+  return match ? match[2] : xml;
+}
+
 function parseFreedomPayXmlPayload(xml: string, fields: string[]) {
   const payload: Record<string, string> = {};
+  const tagPattern = /<([A-Za-z0-9_]+)>([\s\S]*?)<\/\1>/g;
+  const rootContent = getXmlRootContent(xml);
+
+  for (const match of rootContent.matchAll(tagPattern)) {
+    payload[match[1]] = decodeXmlEntities(match[2].trim());
+  }
 
   for (const field of fields) {
+    if (field in payload) {
+      continue;
+    }
+
     const value = getXmlTagValue(xml, field);
 
     if (value != null) {
@@ -237,9 +265,18 @@ function normalizeFreedomPayPaymentState(payload: FreedomPayCallbackPayload) {
   };
 }
 
-function assertFreedomPayResponseSignature(scriptName: string, payload: FreedomPayCallbackPayload) {
-  if (!verifyFreedomPaySignature(scriptName, payload)) {
-    throw new Error(`Invalid Freedom Pay signature for ${normalizeFreedomPayScriptName(scriptName)} response`);
+function assertFreedomPayResponseSignature(
+  scriptName: string | string[],
+  payload: FreedomPayCallbackPayload
+) {
+  const scriptNames = Array.isArray(scriptName) ? scriptName : [scriptName];
+
+  if (!scriptNames.some((name) => verifyFreedomPaySignature(name, payload))) {
+    throw new Error(
+      `Invalid Freedom Pay signature for ${scriptNames
+        .map(normalizeFreedomPayScriptName)
+        .join(" or ")} response`
+    );
   }
 }
 
@@ -401,8 +438,8 @@ export async function createFreedomPayPayment(input: {
     ...(input.customerEmail ? { pg_user_contact_email: input.customerEmail } : {}),
     ...(input.customerPhone ? { pg_user_phone: input.customerPhone } : {}),
   };
-  const requestPayload = withFreedomPaySignature("init_payment", basePayload);
-  const response = await fetch(FREEDOMPAY_INIT_PAYMENT_URL, {
+  const requestPayload = withFreedomPaySignature(FREEDOMPAY_INIT_PAYMENT_SCRIPT, basePayload);
+  const response = await fetch(getFreedomPayApiUrl(FREEDOMPAY_INIT_PAYMENT_SCRIPT), {
     body: JSON.stringify(requestPayload),
     cache: "no-store",
     headers: {
@@ -429,7 +466,11 @@ export async function createFreedomPayPayment(input: {
     "pg_sig",
   ]);
 
-  assertFreedomPayResponseSignature("init_payment", responsePayload);
+  if (responsePayload.pg_sig) {
+    assertFreedomPayResponseSignature(["init_payment", "init_payment.php"], responsePayload);
+  } else if ((responsePayload.pg_status ?? "").toLowerCase() === "ok") {
+    throw new Error("Freedom Pay init_payment response is missing pg_sig");
+  }
 
   if ((responsePayload.pg_status ?? "").toLowerCase() !== "ok") {
     throw new Error(
@@ -512,8 +553,8 @@ async function getFreedomPayStatus(input: { orderId: string; providerOrderId: st
     pg_payment_id: input.providerOrderId,
     pg_salt: generateFreedomPaySalt(),
   };
-  const requestPayload = withFreedomPaySignature("get_status3.php", basePayload);
-  const response = await fetch(FREEDOMPAY_STATUS_URL, {
+  const requestPayload = withFreedomPaySignature(FREEDOMPAY_STATUS_SCRIPT, basePayload);
+  const response = await fetch(getFreedomPayApiUrl(FREEDOMPAY_STATUS_SCRIPT), {
     body: new URLSearchParams(requestPayload),
     cache: "no-store",
     headers: {

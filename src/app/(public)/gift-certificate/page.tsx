@@ -114,6 +114,14 @@ export default async function GiftCertificatePage() {
           <h2 className="text-2xl font-bold text-foreground text-center mb-8">
             Выберите курс для сертификата
           </h2>
+          <div className="mb-8 text-center">
+            <Link
+              href="/gift-certificate/redeem"
+              className="inline-flex rounded-lg border border-primary px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
+            >
+              Уже есть код? Активировать сертификат
+            </Link>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {products.map((product) => {
@@ -161,7 +169,7 @@ export default async function GiftCertificatePage() {
               "Доступ сохраняется на 3-12 месяцев",
               "Подходит для родителей из любого города",
               "Обратная связь и поддержка куратора",
-              "Сертификат можно использовать частями",
+              "Сертификат активируется один раз на выбранный курс",
             ].map((benefit) => (
               <div key={benefit} className="flex items-start gap-3 p-3">
                 <CheckCircle className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />

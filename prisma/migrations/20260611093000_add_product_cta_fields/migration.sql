@@ -1,0 +1,11 @@
+ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "ctaTitle" TEXT;
+ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "ctaSubtitle" TEXT;
+ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "ctaFeatures" TEXT[] DEFAULT ARRAY[]::TEXT[];
+ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "ctaButtonLabel" TEXT;
+
+UPDATE "Product"
+SET "ctaFeatures" = ARRAY[]::TEXT[]
+WHERE "ctaFeatures" IS NULL;
+
+ALTER TABLE "Product" ALTER COLUMN "ctaFeatures" SET DEFAULT ARRAY[]::TEXT[];
+ALTER TABLE "Product" ALTER COLUMN "ctaFeatures" SET NOT NULL;

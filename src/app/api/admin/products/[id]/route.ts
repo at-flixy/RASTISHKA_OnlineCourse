@@ -25,6 +25,10 @@ const updateProductSchema = z.object({
   priceKgs: z.number().int().nonnegative().optional().nullable(),
   priceUsd: z.number().int().nonnegative().optional().nullable(),
   getcourseGroupName: z.string().optional().nullable(),
+  ctaTitle: z.string().optional().nullable(),
+  ctaSubtitle: z.string().optional().nullable(),
+  ctaFeatures: z.array(z.string()).optional(),
+  ctaButtonLabel: z.string().optional().nullable(),
   isPublished: z.boolean().optional(),
   tariffs: z.array(tariffSchema).optional(),
 });

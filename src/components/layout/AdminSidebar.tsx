@@ -11,8 +11,10 @@ import {
   FileText,
   Settings,
   Plug,
+  BadgePercent,
   LogOut,
   Layout,
+  KeyRound,
   X,
 } from "lucide-react";
 import { signOut } from "next-auth/react";
@@ -21,7 +23,9 @@ const navItems = [
   { href: "/admin", label: "Дашборд", icon: LayoutDashboard, exact: true },
   { href: "/admin/landing", label: "Главная страница", icon: Layout },
   { href: "/admin/products", label: "Продукты", icon: BookOpen },
+  { href: "/admin/access", label: "Доступы", icon: KeyRound },
   { href: "/admin/orders", label: "Заказы", icon: ShoppingCart },
+  { href: "/admin/promocodes", label: "Промокоды", icon: BadgePercent },
   { href: "/admin/gift-certificates", label: "Сертификаты", icon: Gift },
   { href: "/admin/pages", label: "Страницы", icon: FileText },
   { href: "/admin/settings", label: "Настройки", icon: Settings },

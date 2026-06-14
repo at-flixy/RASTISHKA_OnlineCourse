@@ -113,6 +113,11 @@ export default async function CheckoutSuccessPage({ searchParams }: SuccessPageP
                       К оплате
                     </div>
                     <div className="font-medium">{formatMoney(order.amount, order.currency)}</div>
+                    {order.discountAmount > 0 && (
+                      <div className="mt-1 text-muted-foreground">
+                        Скидка: {formatMoney(order.discountAmount, order.currency)}
+                      </div>
+                    )}
                     {order.paidCurrency && (
                       <div className="mt-1 text-muted-foreground">Подтверждено в {order.paidCurrency}</div>
                     )}

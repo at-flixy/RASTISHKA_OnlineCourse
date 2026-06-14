@@ -97,7 +97,12 @@ export default async function AccountOrdersPage() {
                       </div>
                     </TableCell>
                     <TableCell className="text-sm font-medium">
-                      {formatMoney(order.amount, order.currency)}
+                      <div>{formatMoney(order.amount, order.currency)}</div>
+                      {order.discountAmount > 0 && (
+                        <div className="text-xs font-normal text-green-700">
+                          скидка {formatMoney(order.discountAmount, order.currency)}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Badge variant={orderStatusVariants[order.status] ?? "secondary"}>

@@ -77,7 +77,14 @@ export default async function OrdersPage() {
                         </span>
                       )}
                     </TableCell>
-                    <TableCell className="text-sm font-medium">{formatMoney(order.amount, order.currency)}</TableCell>
+                    <TableCell className="text-sm">
+                      <div className="font-medium">{formatMoney(order.amount, order.currency)}</div>
+                      {order.discountAmount > 0 && (
+                        <div className="text-xs text-green-700">
+                          скидка {formatMoney(order.discountAmount, order.currency)}
+                        </div>
+                      )}
+                    </TableCell>
                     <TableCell className="text-xs text-muted-foreground space-y-1">
                       <div>{order.provider}</div>
                       <div>{purchaseTypeLabels[order.purchaseType] ?? order.purchaseType}</div>

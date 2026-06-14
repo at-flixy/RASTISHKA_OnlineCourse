@@ -23,6 +23,7 @@ type GiftCertificateEmailInput = {
   customerName: string;
   customerEmail: string;
   code: string;
+  redeemUrl?: string;
   title: string;
   amount: number;
   currency: string;
@@ -68,7 +69,15 @@ function escapeHtml(value: string) {
 }
 
 function formatAmount(amount: number, currency: string) {
-  return `${(amount / 100).toLocaleString("ru-RU")} ${currency}`;
+  if (currency === "KGS") {
+    return `${amount.toLocaleString("ru-RU")} с`;
+  }
+
+  if (currency === "USD") {
+    return `$${amount.toLocaleString("en-US")}`;
+  }
+
+  return `${amount.toLocaleString("ru-RU")} ${currency}`;
 }
 
 export async function sendTransactionalEmail(input: SendEmailInput) {
@@ -134,6 +143,7 @@ export async function sendAccountSetupEmail(input: AccountSetupEmailInput) {
 export async function sendGiftCertificatePurchaserEmail(input: GiftCertificateEmailInput) {
   const siteUrl = getSiteUrl();
   const amount = formatAmount(input.amount, input.currency);
+  const redeemUrl = input.redeemUrl ?? `${siteUrl}/gift-certificate/redeem?code=${encodeURIComponent(input.code)}`;
 
   return sendTransactionalEmail({
     to: input.customerEmail,
@@ -146,6 +156,7 @@ export async function sendGiftCertificatePurchaserEmail(input: GiftCertificateEm
     )}</strong>.</p>
         <p>Код сертификата: <strong>${escapeHtml(input.code)}</strong></p>
         <p>Сумма: <strong>${escapeHtml(amount)}</strong></p>
+        <p><a href="${escapeHtml(redeemUrl)}" style="color:#2563eb">Активировать сертификат</a></p>
         <p><a href="${siteUrl}" style="color:#2563eb">Открыть сайт</a></p>
       </div>
     `,
@@ -158,6 +169,7 @@ export async function sendGiftCertificateRecipientEmail(
 ) {
   const siteUrl = getSiteUrl();
   const amount = formatAmount(input.amount, input.currency);
+  const redeemUrl = input.redeemUrl ?? `${siteUrl}/gift-certificate/redeem?code=${encodeURIComponent(input.code)}`;
 
   return sendTransactionalEmail({
     to: recipientEmail,
@@ -168,6 +180,7 @@ export async function sendGiftCertificateRecipientEmail(
         <p>Для вас оплачен подарочный сертификат на <strong>${escapeHtml(input.title)}</strong>.</p>
         <p>Код сертификата: <strong>${escapeHtml(input.code)}</strong></p>
         <p>Сумма: <strong>${escapeHtml(amount)}</strong></p>
+        <p><a href="${escapeHtml(redeemUrl)}" style="color:#2563eb">Активировать сертификат</a></p>
         <p>Если для активации понадобится помощь, ответьте на это письмо.</p>
         <p><a href="${siteUrl}" style="color:#2563eb">Перейти на сайт</a></p>
       </div>

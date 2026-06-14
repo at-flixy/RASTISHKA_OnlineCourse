@@ -46,7 +46,7 @@ function getGroupNames(order: GetCourseOrder) {
   return Array.from(
     new Set(
       order.items
-        .map((item) => item.tariff?.getcourseGroupName ?? item.product.getcourseGroupName)
+        .flatMap((item) => [item.product.getcourseGroupName, item.tariff?.getcourseGroupName])
         .filter((groupName): groupName is string => Boolean(groupName))
     )
   );
