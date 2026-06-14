@@ -145,6 +145,11 @@ export default async function AccountPage() {
                       <span className="text-xs text-muted-foreground">
                         {formatMoney(order.amount, order.currency)}
                       </span>
+                      {order.discountAmount > 0 && (
+                        <span className="text-xs text-green-700">
+                          скидка {formatMoney(order.discountAmount, order.currency)}
+                        </span>
+                      )}
                     </div>
                     <div>
                       <h2 className="font-semibold text-foreground">{title}</h2>

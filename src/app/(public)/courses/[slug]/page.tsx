@@ -45,6 +45,21 @@ export default async function CoursePage({ params }: Props) {
   if (!product) notFound();
 
   const hasTariffs = product.tariffs.length > 0;
+  const ctaTitle = product.ctaTitle?.trim() || "Готовы начать?";
+  const ctaSubtitle =
+    product.ctaSubtitle?.trim() || "Доступ открывается сразу после оплаты через GetCourse";
+  const ctaFeatures =
+    product.ctaFeatures.length > 0
+      ? product.ctaFeatures
+      : [
+          "Видеоуроки в удобном формате",
+          "Доступ на " + (product.durationLabel ?? "3 месяца"),
+          "Методические материалы",
+          "Поддержка куратора",
+        ];
+  const ctaButtonLabel =
+    product.ctaButtonLabel?.trim() ||
+    `Записаться за ${product.priceKgs?.toLocaleString("ru-RU")} с`;
 
   return (
     <div>
@@ -149,47 +164,28 @@ export default async function CoursePage({ params }: Props) {
       )}
 
       {/* Single product CTA */}
-      {!hasTariffs && product.priceKgs && (() => {
-        const ctaTitle = product.ctaTitle?.trim() || "Готовы начать?";
-        const ctaSubtitle =
-          product.ctaSubtitle?.trim() ||
-          "Доступ открывается сразу после оплаты через GetCourse";
-        const ctaFeatures =
-          product.ctaFeatures && product.ctaFeatures.length > 0
-            ? product.ctaFeatures
-            : [
-                "Видеоуроки в удобном формате",
-                "Доступ на " + (product.durationLabel ?? "3 месяца"),
-                "Методические материалы",
-                "Поддержка куратора",
-              ];
-        const ctaButtonLabel =
-          product.ctaButtonLabel?.trim() ||
-          `Записаться за ${product.priceKgs.toLocaleString("ru-RU")} с`;
-
-        return (
-          <section className="py-12 bg-muted/30">
-            <div className="max-w-2xl mx-auto px-4 sm:px-6 text-center">
-              <h2 className="text-2xl font-bold text-foreground mb-4">{ctaTitle}</h2>
-              <p className="text-muted-foreground mb-6">{ctaSubtitle}</p>
-              <div className="bg-white rounded-2xl border border-border p-6 mb-6 text-left space-y-3">
-                {ctaFeatures.map((item) => (
-                  <div key={item} className="flex items-center gap-2 text-sm">
-                    <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
-                    <span>{item}</span>
-                  </div>
-                ))}
-              </div>
-              <Link
-                href={`/checkout?product=${product.slug}`}
-                className="inline-flex items-center justify-center gap-2 bg-primary text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-primary/90 transition-colors"
-              >
-                {ctaButtonLabel}
-              </Link>
+      {!hasTariffs && product.priceKgs && (
+        <section className="py-12 bg-muted/30">
+          <div className="max-w-2xl mx-auto px-4 sm:px-6 text-center">
+            <h2 className="text-2xl font-bold text-foreground mb-4">{ctaTitle}</h2>
+            <p className="text-muted-foreground mb-6">{ctaSubtitle}</p>
+            <div className="bg-white rounded-2xl border border-border p-6 mb-6 text-left space-y-3">
+              {ctaFeatures.map((item) => (
+                <div key={item} className="flex items-center gap-2 text-sm">
+                  <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
+                  <span>{item}</span>
+                </div>
+              ))}
             </div>
-          </section>
-        );
-      })()}
+            <Link
+              href={`/checkout?product=${product.slug}`}
+              className="inline-flex items-center justify-center gap-2 bg-primary text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-primary/90 transition-colors"
+            >
+              {ctaButtonLabel}
+            </Link>
+          </div>
+        </section>
+      )}
     </div>
   );
 }

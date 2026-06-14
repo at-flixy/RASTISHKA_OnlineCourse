@@ -98,6 +98,19 @@ export default async function OrderDetailsPage({ params }: OrderDetailsPageProps
             <div>
               <span className="text-muted-foreground">Сумма:</span> {formatMoney(order.amount, order.currency)}
             </div>
+            {order.subtotalAmount != null && (
+              <div>
+                <span className="text-muted-foreground">Цена до скидки:</span>{" "}
+                {formatMoney(order.subtotalAmount, order.currency)}
+              </div>
+            )}
+            {order.discountAmount > 0 && (
+              <div>
+                <span className="text-muted-foreground">Скидка:</span>{" "}
+                {formatMoney(order.discountAmount, order.currency)}
+                {order.promoCodeValue ? ` (${order.promoCodeValue})` : ""}
+              </div>
+            )}
             <div>
               <span className="text-muted-foreground">Подтверждённая валюта:</span> {order.paidCurrency ?? "—"}
             </div>

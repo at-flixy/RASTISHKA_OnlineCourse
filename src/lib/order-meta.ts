@@ -36,5 +36,13 @@ export const purchaseTypeLabels: Record<string, string> = {
 };
 
 export function formatMoney(amount: number, currency: string) {
-  return `${(amount / 100).toLocaleString("ru-RU")} ${currency}`;
+  if (currency === "KGS") {
+    return `${amount.toLocaleString("ru-RU")} с`;
+  }
+
+  if (currency === "USD") {
+    return `$${amount.toLocaleString("en-US")}`;
+  }
+
+  return `${amount.toLocaleString("ru-RU")} ${currency}`;
 }

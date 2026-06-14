@@ -2,7 +2,7 @@
 
 import { useState, useTransition, type FormEvent } from "react";
 import Image from "next/image";
-import { AlertTriangle, CreditCard, Gift, ShieldCheck } from "lucide-react";
+import { AlertTriangle, CreditCard, Gift, MessageCircle, Send, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +31,19 @@ type CheckoutProduct = {
   title: string;
 };
 
+type CheckoutQuote = {
+  amount: number;
+  currency: string;
+  discountAmount: number;
+  promo: {
+    code: string;
+    description: string | null;
+    id: string;
+    percentOff: number;
+  } | null;
+  subtotalAmount: number;
+};
+
 type CheckoutFormProps = {
   availableProviders: CheckoutProvider[];
   currentUser?: {
@@ -40,6 +53,10 @@ type CheckoutFormProps = {
   initialCurrency: CheckoutCurrency;
   initialProvider: CheckoutProvider;
   initialTariffId: string | null;
+  manualPaymentContacts?: {
+    telegramUrl?: string | null;
+    whatsappUrl?: string | null;
+  };
   paymentUnavailableReason?: string | null;
   product: CheckoutProduct;
   purchaseType: PurchaseType;
@@ -98,6 +115,7 @@ export function CheckoutForm({
   initialCurrency,
   initialProvider,
   paymentUnavailableReason,
+  manualPaymentContacts,
   purchaseType,
 }: CheckoutFormProps) {
   const [selectedTariffId, setSelectedTariffId] = useState(initialTariffId);
@@ -109,6 +127,10 @@ export function CheckoutForm({
   const [customerEmail, setCustomerEmail] = useState(currentUser?.email ?? "");
   const [customerPhone, setCustomerPhone] = useState("");
   const [giftRecipientEmail, setGiftRecipientEmail] = useState("");
+  const [promoCode, setPromoCode] = useState("");
+  const [quote, setQuote] = useState<CheckoutQuote | null>(null);
+  const [quoteMessage, setQuoteMessage] = useState<string | null>(null);
+  const [isQuotePending, setIsQuotePending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -117,10 +139,18 @@ export function CheckoutForm({
   const priceUsd = selectedTariff?.priceUsd ?? product.priceUsd;
   const availableCurrencies = getAvailableCurrencies(priceKgs, priceUsd);
   const amount = currency === "KGS" ? priceKgs : priceUsd;
+  const finalAmount = quote?.currency === currency ? quote.amount : amount;
+  const discountAmount = quote?.currency === currency ? quote.discountAmount : 0;
   const title = selectedTariff ? `${product.title} - ${selectedTariff.name}` : product.title;
   const currentProvider = providerCopy[provider];
 
+  const resetQuote = () => {
+    setQuote(null);
+    setQuoteMessage(null);
+  };
+
   const handleTariffChange = (tariffId: string) => {
+    resetQuote();
     setSelectedTariffId(tariffId);
 
     const tariff = product.tariffs.find((item) => item.id === tariffId);
@@ -131,11 +161,68 @@ export function CheckoutForm({
     }
   };
 
+  const handleCurrencyChange = (nextCurrency: CheckoutCurrency) => {
+    resetQuote();
+    setCurrency(nextCurrency);
+  };
+
+  const handlePromoCodeChange = (value: string) => {
+    setPromoCode(value);
+    resetQuote();
+  };
+
+  const handleCustomerEmailChange = (value: string) => {
+    setCustomerEmail(value);
+    resetQuote();
+  };
+
+  const handleApplyPromoCode = async () => {
+    setError(null);
+    setQuoteMessage(null);
+
+    if (!promoCode.trim()) {
+      resetQuote();
+      return;
+    }
+
+    setIsQuotePending(true);
+
+    try {
+      const response = await fetch("/api/checkout/quote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productSlug: product.slug,
+          tariffId: selectedTariffId,
+          purchaseType,
+          currency,
+          customerEmail: customerEmail || null,
+          promoCode,
+        }),
+      });
+      const data = (await response.json()) as CheckoutQuote & { error?: string };
+
+      if (!response.ok) {
+        setQuote(null);
+        setQuoteMessage(data.error ?? "Промокод не удалось применить");
+        return;
+      }
+
+      setQuote(data);
+      setQuoteMessage(data.promo ? `Промокод ${data.promo.code} применён` : null);
+    } catch (quoteError) {
+      setQuote(null);
+      setQuoteMessage(quoteError instanceof Error ? quoteError.message : "Не удалось проверить промокод");
+    } finally {
+      setIsQuotePending(false);
+    }
+  };
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
 
-    if (paymentUnavailableReason) {
+    if (paymentUnavailableReason && finalAmount !== 0) {
       setError(paymentUnavailableReason);
       return;
     }
@@ -155,6 +242,7 @@ export function CheckoutForm({
             customerEmail,
             customerPhone,
             giftRecipientEmail: purchaseType === "GIFT_CERTIFICATE" ? giftRecipientEmail || null : null,
+            promoCode: purchaseType === "COURSE" ? promoCode || null : null,
           }),
         });
         const data = (await response.json()) as { error?: string; url?: string };
@@ -234,7 +322,7 @@ export function CheckoutForm({
                   <button
                     key={item}
                     type="button"
-                    onClick={() => setCurrency(item)}
+                    onClick={() => handleCurrencyChange(item)}
                     className={`rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
                       currency === item
                         ? "border-primary bg-primary text-white"
@@ -299,7 +387,7 @@ export function CheckoutForm({
                   id="customerEmail"
                   type="email"
                   value={customerEmail}
-                  onChange={(event) => setCustomerEmail(event.target.value)}
+                  onChange={(event) => handleCustomerEmailChange(event.target.value)}
                   placeholder="you@example.com"
                   readOnly={Boolean(currentUser?.email)}
                   className={currentUser?.email ? "bg-muted" : undefined}
@@ -338,12 +426,79 @@ export function CheckoutForm({
               )}
             </div>
 
-            {paymentUnavailableReason && (
-              <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                <div>
-                  <div className="font-medium">Платежи временно недоступны</div>
-                  <div className="mt-1">{paymentUnavailableReason}</div>
+            {purchaseType === "COURSE" && (
+              <div className="space-y-3 rounded-xl border border-border p-4">
+                <div className="space-y-1">
+                  <Label htmlFor="promoCode">Промокод</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Скидка применяется только к покупке курса и будет проверена перед оплатой.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Input
+                    id="promoCode"
+                    value={promoCode}
+                    onChange={(event) => handlePromoCodeChange(event.target.value)}
+                    placeholder="Например, MASSAGE10"
+                    className="uppercase"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleApplyPromoCode}
+                    disabled={isQuotePending || !promoCode.trim() || amount == null}
+                  >
+                    {isQuotePending ? "Проверяем..." : "Применить"}
+                  </Button>
+                </div>
+                {quoteMessage && (
+                  <p
+                    className={`text-sm ${
+                      quote?.promo ? "text-green-700" : "text-destructive"
+                    }`}
+                  >
+                    {quoteMessage}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {paymentUnavailableReason && finalAmount !== 0 && (
+              <div className="space-y-3 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <div>
+                    <div className="font-medium">Платежи временно недоступны</div>
+                    <div className="mt-1">{paymentUnavailableReason}</div>
+                    <div className="mt-2">
+                      Сейчас можно оплатить вручную: напишите нам, мы пришлем реквизиты и выдадим доступ
+                      после подтверждения оплаты.
+                    </div>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2 pl-7">
+                  {manualPaymentContacts?.whatsappUrl && (
+                    <a
+                      href={manualPaymentContacts.whatsappUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 rounded-md bg-green-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700"
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      WhatsApp
+                    </a>
+                  )}
+                  {manualPaymentContacts?.telegramUrl && (
+                    <a
+                      href={manualPaymentContacts.telegramUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 rounded-md bg-sky-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-sky-700"
+                    >
+                      <Send className="h-4 w-4" />
+                      Telegram
+                    </a>
+                  )}
                 </div>
               </div>
             )}
@@ -358,14 +513,20 @@ export function CheckoutForm({
               type="submit"
               size="lg"
               className="w-full"
-              disabled={isPending || amount == null || Boolean(paymentUnavailableReason)}
+              disabled={
+                isPending ||
+                finalAmount == null ||
+                (Boolean(paymentUnavailableReason) && finalAmount !== 0)
+              }
             >
               <CreditCard className="h-4 w-4" />
-              {paymentUnavailableReason
+              {paymentUnavailableReason && finalAmount !== 0
                 ? "Платежи временно недоступны"
                 : isPending
                   ? currentProvider.pendingLabel
-                  : `Перейти к оплате - ${formatMoney(amount ?? 0, currency)}`}
+                  : finalAmount === 0
+                    ? "Получить доступ бесплатно"
+                    : `Перейти к оплате - ${formatMoney(finalAmount ?? 0, currency)}`}
             </Button>
           </form>
         </CardContent>
@@ -404,9 +565,19 @@ export function CheckoutForm({
                 <div className="text-xs text-muted-foreground">{currentProvider.accent}</div>
               </div>
             </div>
+            <div className="flex items-start justify-between gap-3 border-t border-border pt-3">
+              <span className="text-muted-foreground">Цена</span>
+              <span className="font-medium">{formatMoney(amount ?? 0, currency)}</span>
+            </div>
+            {discountAmount > 0 && quote?.promo && (
+              <div className="flex items-start justify-between gap-3 text-green-700">
+                <span>Скидка {quote.promo.percentOff}% ({quote.promo.code})</span>
+                <span>-{formatMoney(discountAmount, currency)}</span>
+              </div>
+            )}
             <div className="flex items-start justify-between gap-3 border-t border-border pt-3 text-base">
               <span className="font-medium">К оплате</span>
-              <span className="font-semibold text-primary">{formatMoney(amount ?? 0, currency)}</span>
+              <span className="font-semibold text-primary">{formatMoney(finalAmount ?? 0, currency)}</span>
             </div>
           </CardContent>
         </Card>

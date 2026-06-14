@@ -9,6 +9,7 @@ import {
   sendGiftCertificateRecipientEmail,
 } from "@/lib/email";
 import { syncCourseAccessToGetCourse } from "@/lib/getcourse";
+import { recordPromoRedemptionIfNeeded } from "@/lib/payments/pricing";
 import { getSiteUrl } from "@/lib/site-url";
 
 async function getOrderForFulfillment(orderId: string) {
@@ -382,6 +383,7 @@ export async function fulfillPaidOrder(orderId: string) {
   }
 
   await ensureCustomerAccountForPaidOrder(order.id);
+  await recordPromoRedemptionIfNeeded(order.id);
 
   if (order.purchaseType === "GIFT_CERTIFICATE") {
     await ensureGiftCertificate(order.id);

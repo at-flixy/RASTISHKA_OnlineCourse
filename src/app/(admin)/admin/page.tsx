@@ -74,7 +74,7 @@ export default async function AdminDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {((revenueKgs._sum.amount ?? 0) / 100).toLocaleString("ru-RU")} с
+              {(revenueKgs._sum.amount ?? 0).toLocaleString("ru-RU")} с
             </div>
           </CardContent>
         </Card>
@@ -120,7 +120,7 @@ export default async function AdminDashboardPage() {
                       {order.items[0]?.product.title ?? "—"}
                     </TableCell>
                     <TableCell className="text-sm font-medium">
-                      {(order.amount / 100).toLocaleString("ru-RU")} {order.currency}
+                      {order.amount.toLocaleString("ru-RU")} {order.currency}
                     </TableCell>
                     <TableCell>
                       <Badge variant={statusVariants[order.status] ?? "secondary"}>

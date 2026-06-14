@@ -35,6 +35,10 @@ const tariffSchema = z.object({
   order: z.number().int(),
 });
 
+const ctaFeatureSchema = z.object({
+  value: z.string(),
+});
+
 const productSchema = z.object({
   slug: z
     .string()
@@ -50,7 +54,7 @@ const productSchema = z.object({
   getcourseGroupName: z.string().optional(),
   ctaTitle: z.string().optional(),
   ctaSubtitle: z.string().optional(),
-  ctaFeatures: z.array(z.object({ value: z.string() })),
+  ctaFeatures: z.array(ctaFeatureSchema),
   ctaButtonLabel: z.string().optional(),
   isPublished: z.boolean(),
   tariffs: z.array(tariffSchema),
@@ -110,7 +114,7 @@ export function ProductForm({ product, isNew = false }: ProductFormProps) {
     getcourseGroupName: product?.getcourseGroupName ?? "",
     ctaTitle: product?.ctaTitle ?? "",
     ctaSubtitle: product?.ctaSubtitle ?? "",
-    ctaFeatures: (product?.ctaFeatures ?? []).map((v) => ({ value: v })),
+    ctaFeatures: (product?.ctaFeatures ?? []).map((value) => ({ value })),
     ctaButtonLabel: product?.ctaButtonLabel ?? "",
     isPublished: product?.isPublished ?? false,
     tariffs: (product?.tariffs ?? []).map((t) => ({
@@ -136,7 +140,6 @@ export function ProductForm({ product, isNew = false }: ProductFormProps) {
     control,
     name: "tariffs",
   });
-
   const {
     fields: ctaFeatureFields,
     append: appendCtaFeature,
@@ -157,10 +160,10 @@ export function ProductForm({ product, isNew = false }: ProductFormProps) {
       thumbnailUrl: values.thumbnailUrl || null,
       durationLabel: values.durationLabel || null,
       getcourseGroupName: values.getcourseGroupName || null,
-      ctaTitle: values.ctaTitle || null,
-      ctaSubtitle: values.ctaSubtitle || null,
-      ctaButtonLabel: values.ctaButtonLabel || null,
-      ctaFeatures: values.ctaFeatures.map((f) => f.value).filter(Boolean),
+      ctaTitle: values.ctaTitle?.trim() || null,
+      ctaSubtitle: values.ctaSubtitle?.trim() || null,
+      ctaFeatures: values.ctaFeatures.map((feature) => feature.value.trim()).filter(Boolean),
+      ctaButtonLabel: values.ctaButtonLabel?.trim() || null,
       tariffs: values.tariffs.map((t, i) => ({
         ...t,
         tagline: t.tagline || null,
@@ -315,42 +318,118 @@ export function ProductForm({ product, isNew = false }: ProductFormProps) {
       {!hasTariffs && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Цена и GetCourse</CardTitle>
+            <CardTitle className="text-base">Цена</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label htmlFor="priceKgs">Цена (KGS, тыйын)</Label>
+                <Label htmlFor="priceKgs">Цена (KGS, сом)</Label>
                 <Input
                   id="priceKgs"
                   {...register("priceKgs", { valueAsNumber: true })}
                   type="number"
-                  placeholder="99000"
+                  placeholder="9900"
                 />
-                <p className="text-xs text-muted-foreground">В тиынах (1 с = 100 тыйын)</p>
+                <p className="text-xs text-muted-foreground">В сомах</p>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="priceUsd">Цена (USD, центы)</Label>
+                <Label htmlFor="priceUsd">Цена (USD, доллары)</Label>
                 <Input
                   id="priceUsd"
                   {...register("priceUsd", { valueAsNumber: true })}
                   type="number"
-                  placeholder="11500"
+                  placeholder="115"
                 />
-                <p className="text-xs text-muted-foreground">В центах (1 $ = 100 cent)</p>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="getcourseGroupName">Группа в GetCourse</Label>
-                <Input
-                  id="getcourseGroupName"
-                  {...register("getcourseGroupName")}
-                  placeholder="Название группы"
-                />
+                <p className="text-xs text-muted-foreground">В долларах</p>
               </div>
             </div>
           </CardContent>
         </Card>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">GetCourse</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-1.5">
+          <Label htmlFor="getcourseGroupName">Общая группа GetCourse</Label>
+          <Input
+            id="getcourseGroupName"
+            {...register("getcourseGroupName")}
+            placeholder="Название группы"
+          />
+          <p className="text-xs text-muted-foreground">
+            Для курса с тарифами укажите группу, которая открывает тренинг. Группы тарифов
+            заполняются ниже в каждом тарифе.
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Блок «Готовы начать?»</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="ctaTitle">Заголовок</Label>
+              <Input id="ctaTitle" {...register("ctaTitle")} placeholder="Готовы начать?" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="ctaButtonLabel">Текст кнопки</Label>
+              <Input
+                id="ctaButtonLabel"
+                {...register("ctaButtonLabel")}
+                placeholder="Записаться за 6 900 с"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="ctaSubtitle">Подзаголовок</Label>
+            <Input
+              id="ctaSubtitle"
+              {...register("ctaSubtitle")}
+              placeholder="Доступ открывается сразу после оплаты через GetCourse"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Пункты блока</Label>
+            {ctaFeatureFields.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                Если пункты не заполнены, на странице курса будет показан стандартный список.
+              </p>
+            )}
+            {ctaFeatureFields.map((field, index) => (
+              <div key={field.id} className="flex gap-2">
+                <Input
+                  {...register(`ctaFeatures.${index}.value`)}
+                  placeholder="Видеоуроки в удобном формате"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => removeCtaFeature(index)}
+                  className="text-destructive hover:text-destructive shrink-0"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => appendCtaFeature({ value: "" })}
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Добавить пункт
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Tariffs */}
       <Card>
@@ -386,86 +465,12 @@ export function ProductForm({ product, isNew = false }: ProductFormProps) {
               onMoveDown={() => { if (index < tariffFields.length - 1) move(index, index + 1); }}
               register={register}
               watch={watch}
-              setValue={setValue}
               errors={errors}
               control={control}
               isFirst={index === 0}
               isLast={index === tariffFields.length - 1}
             />
           ))}
-        </CardContent>
-      </Card>
-
-      {/* CTA block */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">CTA-блок «Готовы начать?»</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-xs text-muted-foreground">
-            Отображается на странице курса под описанием для курсов без тарифов. Оставьте поля пустыми, чтобы использовать значения по умолчанию.
-          </p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="ctaTitle">Заголовок</Label>
-              <Input
-                id="ctaTitle"
-                {...register("ctaTitle")}
-                placeholder="Готовы начать?"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="ctaButtonLabel">Текст кнопки</Label>
-              <Input
-                id="ctaButtonLabel"
-                {...register("ctaButtonLabel")}
-                placeholder="Записаться за 6 900 с"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="ctaSubtitle">Подзаголовок</Label>
-            <Input
-              id="ctaSubtitle"
-              {...register("ctaSubtitle")}
-              placeholder="Доступ открывается сразу после оплаты через GetCourse"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Пункты блока</Label>
-            {ctaFeatureFields.map((field, idx) => (
-              <div key={field.id} className="flex gap-2">
-                <Input
-                  {...register(`ctaFeatures.${idx}.value`)}
-                  placeholder="Видеоуроки в удобном формате"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => removeCtaFeature(idx)}
-                  className="text-destructive hover:text-destructive shrink-0"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => appendCtaFeature({ value: "" })}
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              Добавить пункт
-            </Button>
-            <p className="text-xs text-muted-foreground">
-              Если оставить пустым, будут показаны пункты по умолчанию (видеоуроки, доступ, методические материалы, поддержка куратора).
-            </p>
-          </div>
         </CardContent>
       </Card>
 
@@ -497,7 +502,6 @@ function TariffEditor({
   onMoveDown,
   register,
   watch,
-  setValue,
   errors,
   control,
   isFirst,
@@ -513,8 +517,6 @@ function TariffEditor({
   register: any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   watch: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  setValue: any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   errors: any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -604,22 +606,22 @@ function TariffEditor({
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-1.5">
-              <Label>Цена KGS (тыйын) *</Label>
+              <Label>Цена KGS (сом) *</Label>
               <Input
                 {...register(`tariffs.${index}.priceKgs`, { valueAsNumber: true })}
                 type="number"
-                placeholder="990000"
+                placeholder="9900"
               />
               {errors.tariffs?.[index]?.priceKgs && (
                 <p className="text-xs text-destructive">{errors.tariffs[index].priceKgs.message}</p>
               )}
             </div>
             <div className="space-y-1.5">
-              <Label>Цена USD (центы) *</Label>
+              <Label>Цена USD (доллары) *</Label>
               <Input
                 {...register(`tariffs.${index}.priceUsd`, { valueAsNumber: true })}
                 type="number"
-                placeholder="11500"
+                placeholder="115"
               />
             </div>
             <div className="space-y-1.5">

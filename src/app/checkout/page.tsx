@@ -1,5 +1,6 @@
 import { CheckoutForm } from "@/components/checkout/CheckoutForm";
 import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
 import {
   getCheckoutProduct,
   getDefaultCurrency,
@@ -57,7 +58,16 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
       ? getCheckoutProviderSetupIssue(checkoutProvider) ??
         "Платежный провайдер еще не настроен в окружении проекта."
       : null;
-  const session = await auth();
+  const [session, settings] = await Promise.all([
+    auth(),
+    db.siteSettings.findUnique({
+      where: { id: 1 },
+      select: {
+        telegramUrl: true,
+        whatsappUrl: true,
+      },
+    }),
+  ]);
 
   return (
     <div className="bg-gradient-to-b from-muted/40 via-background to-background py-12 sm:py-16">
@@ -98,6 +108,10 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
           initialProvider={checkoutProvider}
           purchaseType={purchaseType}
           paymentUnavailableReason={paymentUnavailableReason}
+          manualPaymentContacts={{
+            telegramUrl: settings?.telegramUrl ?? null,
+            whatsappUrl: settings?.whatsappUrl ?? null,
+          }}
           currentUser={
             session?.user
               ? {

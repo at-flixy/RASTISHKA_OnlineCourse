@@ -26,6 +26,7 @@ enum PaymentProvider {
   STRIPE
   YOOKASSA
   MANUAL
+  CERTIFICATE
 }
 
 enum PurchaseType {
@@ -83,10 +84,12 @@ model Product {
   getcourseGroupName String?
   ctaTitle         String?
   ctaSubtitle      String?
-  ctaFeatures      String[]
+  ctaFeatures      String[]    @default([])
   ctaButtonLabel   String?
   tariffs          Tariff[]
   orderItems       OrderItem[]
+  promoScopes      PromoCodeProduct[]
+  giftCertificates GiftCertificate[]
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
 
@@ -106,6 +109,7 @@ model Tariff {
   getcourseGroupName String
   order              Int         @default(0)
   orderItems         OrderItem[]
+  giftCertificates   GiftCertificate[]
 
   @@index([productId, order])
 }
@@ -147,16 +151,25 @@ model Order {
   customerName    String
   customerPhone   String?
   giftRecipientEmail String?
+  subtotalAmount  Int?
+  discountAmount  Int             @default(0)
   amount          Int
   currency        String
   paidCurrency    String?
   provider        PaymentProvider
   purchaseType    PurchaseType    @default(COURSE)
+  promoCodeId     String?
+  promoCode       PromoCode?      @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
+  promoCodeValue  String?
+  promoPercentOff Int?
   providerOrderId String?
   stripeCheckoutSessionId String? @unique
   stripePaymentIntentId String?   @unique
   status          OrderStatus     @default(PENDING)
   items           OrderItem[]
+  promoRedemption PromoRedemption?
+  issuedGiftCertificate GiftCertificate? @relation("GiftCertificatePurchaseOrder")
+  redeemedGiftCertificate GiftCertificate? @relation("GiftCertificateRedeemedOrder")
   syncStatus      SyncStatus      @default(PENDING)
   syncAttempts    Int             @default(0)
   syncError       String?
@@ -169,6 +182,7 @@ model Order {
 
   @@index([userId])
   @@index([status, createdAt])
+  @@index([promoCodeId])
   @@index([providerOrderId])
 }
 
@@ -193,15 +207,74 @@ model GiftCertificate {
   id              String    @id @default(cuid())
   code            String    @unique
   orderId         String?   @unique
+  order           Order?    @relation("GiftCertificatePurchaseOrder", fields: [orderId], references: [id], onDelete: SetNull)
   productId       String?
+  product         Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
   tariffId        String?
+  tariff          Tariff?   @relation(fields: [tariffId], references: [id], onDelete: SetNull)
   amount          Int
   currency        String
   amountKgs       Int?
   recipientEmail  String?
   redeemedAt      DateTime?
-  redeemedOrderId String?
+  redeemedByEmail String?
+  redeemedOrderId String?   @unique
+  redeemedOrder   Order?    @relation("GiftCertificateRedeemedOrder", fields: [redeemedOrderId], references: [id], onDelete: SetNull)
+  voidedAt        DateTime?
+  voidReason      String?
   createdAt       DateTime  @default(now())
+
+  @@index([productId])
+  @@index([tariffId])
+  @@index([recipientEmail])
+}
+
+model PromoCode {
+  id                   String             @id @default(cuid())
+  code                 String             @unique
+  description          String?
+  percentOff           Int
+  isActive             Boolean            @default(true)
+  startsAt             DateTime?
+  endsAt               DateTime?
+  maxRedemptions       Int?
+  perCustomerLimit     Int?
+  appliesToAllProducts Boolean            @default(false)
+  productScopes        PromoCodeProduct[]
+  redemptions          PromoRedemption[]
+  orders               Order[]
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  @@index([isActive])
+  @@index([startsAt])
+  @@index([endsAt])
+}
+
+model PromoCodeProduct {
+  id          String    @id @default(cuid())
+  promoCodeId String
+  promoCode   PromoCode @relation(fields: [promoCodeId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([promoCodeId, productId])
+  @@index([productId])
+}
+
+model PromoRedemption {
+  id             String    @id @default(cuid())
+  promoCodeId    String
+  promoCode      PromoCode @relation(fields: [promoCodeId], references: [id], onDelete: Cascade)
+  orderId        String    @unique
+  order          Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  customerEmail  String
+  discountAmount Int
+  currency       String
+  createdAt      DateTime  @default(now())
+
+  @@index([promoCodeId])
+  @@index([customerEmail])
 }
 
 // ─── Integration Logs ─────────────────────────────────────────────────────────

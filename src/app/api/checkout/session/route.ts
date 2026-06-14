@@ -8,6 +8,7 @@ import {
   resolveCheckoutPurchase,
 } from "@/lib/payments/catalog";
 import { createPendingCheckoutOrder } from "@/lib/payments/checkout";
+import { fulfillPaidOrder } from "@/lib/payments/fulfillment";
 import {
   createFreedomPayPayment,
   getFreedomPayErrorMessage,
@@ -18,12 +19,17 @@ import {
   getStripePublishableKey,
 } from "@/lib/payments/stripe";
 import { isCheckoutProviderAvailable } from "@/lib/payments/provider-meta";
+import { quoteCheckoutPurchase } from "@/lib/payments/pricing";
 import { getSiteUrl } from "@/lib/site-url";
 
 export const runtime = "nodejs";
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Unknown error";
+}
+
+function getStripeUnitAmount(amount: number) {
+  return Math.round(amount * 100);
 }
 
 async function createStripeCheckoutSession(input: {
@@ -38,10 +44,14 @@ async function createStripeCheckoutSession(input: {
   const metadata = {
     currency: input.purchase.currency,
     customerEmail: input.customerEmail,
+    discountAmount: String(input.order.discountAmount),
     giftRecipientEmail: input.giftRecipientEmail ?? "",
     orderId: input.order.id,
+    promoCode: input.order.promoCodeValue ?? "",
+    promoPercentOff: input.order.promoPercentOff != null ? String(input.order.promoPercentOff) : "",
     productId: input.purchase.product.id,
     purchaseType: input.purchaseType,
+    subtotalAmount: String(input.order.subtotalAmount ?? input.order.amount),
     tariffId: input.purchase.tariff?.id ?? "",
   };
   const session = await stripe.checkout.sessions.create({
@@ -60,7 +70,7 @@ async function createStripeCheckoutSession(input: {
         quantity: 1,
         price_data: {
           currency: input.purchase.currency.toLowerCase(),
-          unit_amount: input.purchase.amount,
+          unit_amount: getStripeUnitAmount(input.order.amount),
           product_data: {
             name: input.purchase.displayTitle,
             description: input.purchase.description,
@@ -91,8 +101,8 @@ async function createStripeCheckoutSession(input: {
     orderId: input.order.id,
     status: "SUCCESS",
     requestBody: metadata,
-    responseBody: {
-      amount: input.purchase.amount,
+      responseBody: {
+      amount: input.order.amount,
       currency: input.purchase.currency,
       paymentIntentId,
       sessionId: session.id,
@@ -111,7 +121,7 @@ async function createFreedomPayCheckoutSession(input: {
   purchase: Awaited<ReturnType<typeof resolveCheckoutPurchase>>;
 }) {
   const payment = await createFreedomPayPayment({
-    amount: input.purchase.amount,
+    amount: input.order.amount,
     currency: input.purchase.currency,
     customerEmail: input.order.customerEmail,
     customerPhone: input.order.customerPhone,
@@ -142,6 +152,31 @@ async function createFreedomPayCheckoutSession(input: {
   };
 }
 
+async function createZeroAmountCheckoutResult(input: {
+  order: Awaited<ReturnType<typeof createPendingCheckoutOrder>>;
+}) {
+  const siteUrl = getSiteUrl();
+
+  await db.order.update({
+    where: { id: input.order.id },
+    data: {
+      paidAt: new Date(),
+      paidCurrency: input.order.currency,
+      providerOrderId: `promo:${input.order.id}`,
+      status: "PAID",
+      syncError: null,
+    },
+  });
+
+  await fulfillPaidOrder(input.order.id);
+
+  return {
+    orderId: input.order.id,
+    publishableKey: null,
+    url: `${siteUrl}/checkout/success?order=${input.order.id}`,
+  };
+}
+
 export async function POST(request: Request) {
   let body: unknown;
 
@@ -164,15 +199,6 @@ export async function POST(request: Request) {
   }
 
   try {
-    if (!isCheckoutProviderAvailable(parsed.data.provider)) {
-      return NextResponse.json(
-        {
-          error: `${parsed.data.provider} is unavailable`,
-        },
-        { status: 400 }
-      );
-    }
-
     const purchase = await resolveCheckoutPurchase({
       productSlug: parsed.data.productSlug,
       tariffId: parsed.data.tariffId,
@@ -181,9 +207,24 @@ export async function POST(request: Request) {
     });
     const session = await auth();
     const customerEmail = normalizeEmail(session?.user?.email ?? parsed.data.customerEmail);
+    const quote = await quoteCheckoutPurchase({
+      customerEmail,
+      promoCode: parsed.data.promoCode,
+      purchase,
+    });
+
+    if (quote.amount > 0 && !isCheckoutProviderAvailable(parsed.data.provider)) {
+      return NextResponse.json(
+        {
+          error: `${parsed.data.provider} is unavailable`,
+        },
+        { status: 400 }
+      );
+    }
     const order = await createPendingCheckoutOrder({
       purchase,
-      provider: parsed.data.provider,
+      provider: quote.amount === 0 ? "MANUAL" : parsed.data.provider,
+      quote,
       customerName: parsed.data.customerName,
       customerEmail,
       customerPhone: parsed.data.customerPhone,
@@ -193,18 +234,20 @@ export async function POST(request: Request) {
 
     try {
       const result =
-        parsed.data.provider === "FREEDOMPAY"
-          ? await createFreedomPayCheckoutSession({
-              order,
-              purchase,
-            })
-          : await createStripeCheckoutSession({
-              customerEmail,
-              giftRecipientEmail: parsed.data.giftRecipientEmail ?? null,
-              order,
-              purchase,
-              purchaseType: parsed.data.purchaseType,
-            });
+        order.amount === 0
+          ? await createZeroAmountCheckoutResult({ order })
+          : parsed.data.provider === "FREEDOMPAY"
+            ? await createFreedomPayCheckoutSession({
+                order,
+                purchase,
+              })
+            : await createStripeCheckoutSession({
+                customerEmail,
+                giftRecipientEmail: parsed.data.giftRecipientEmail ?? null,
+                order,
+                purchase,
+                purchaseType: parsed.data.purchaseType,
+              });
 
       return NextResponse.json(result);
     } catch (error) {
@@ -231,6 +274,7 @@ export async function POST(request: Request) {
           orderId: order.id,
           provider: parsed.data.provider,
           purchaseType: parsed.data.purchaseType,
+          promoCode: parsed.data.promoCode ?? null,
         },
         error: message,
       });

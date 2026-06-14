@@ -40,6 +40,7 @@ export const createCheckoutSessionSchema = z.object({
   customerEmail: z.string().email(),
   customerPhone: z.string().min(5).max(40),
   giftRecipientEmail: z.string().email().optional().nullable(),
+  promoCode: z.string().max(80).optional().nullable(),
 });
 
 export async function getCheckoutProduct(productSlug: string) {
